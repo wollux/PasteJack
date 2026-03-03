@@ -3,6 +3,7 @@ set -euo pipefail
 
 APP_NAME="PasteJack"
 VERSION=$(git describe --tags --always 2>/dev/null || echo "0.1.0")
+VERSION="${VERSION#v}"
 APP_BUNDLE=".build/release/${APP_NAME}.app"
 DMG_DIR=".build/dmg"
 DMG_FILE=".build/${APP_NAME}-${VERSION}.dmg"

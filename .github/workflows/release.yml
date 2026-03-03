@@ -10,17 +10,8 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-
-      - name: Build Universal Binary
-        run: swift build -c release --arch arm64 --arch x86_64
-
-      - name: Create App Bundle
-        run: ./Scripts/build.sh
-
-      - name: Create DMG
-        run: |
-          brew install create-dmg
-          ./Scripts/create-dmg.sh
+        with:
+          fetch-depth: 0
 
       - name: Import Signing Certificate
         env:
@@ -28,10 +19,21 @@ jobs:
           CERTIFICATE_PASSWORD: ${{ secrets.CERT_PASSWORD }}
         run: |
           echo "$CERTIFICATE_BASE64" | base64 --decode > certificate.p12
-          security create-keychain -p "" build.keychain
+          security create-keychain -p "build" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "build" build.keychain
           security import certificate.p12 -k build.keychain -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple: -k "" build.keychain
-          security list-keychains -d user -s build.keychain
+          security set-key-partition-list -S apple-tool:,apple: -k "build" build.keychain
+          security list-keychains -d user -s build.keychain login.keychain
+          rm certificate.p12
+
+      - name: Build and Sign App Bundle
+        run: ./Scripts/build.sh
+
+      - name: Create DMG
+        run: |
+          brew install create-dmg
+          ./Scripts/create-dmg.sh
 
       - name: Notarize
         env:
