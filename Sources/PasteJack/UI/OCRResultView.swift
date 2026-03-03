@@ -37,7 +37,6 @@ struct OCRResultView: View {
         }
         .frame(width: 480, height: 420)
         .background(Color(.windowBackgroundColor))
-        .onAppear { startAutoClose() }
         .onDisappear { timer?.invalidate() }
     }
 
@@ -110,12 +109,6 @@ struct OCRResultView: View {
                 }
 
                 Spacer()
-
-                if autoCloseEnabled && !isEditing && autoCloseRemaining > 0 {
-                    Text("Closes in \(autoCloseRemaining)s")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
             }
         }
         .padding(.horizontal, 24)
