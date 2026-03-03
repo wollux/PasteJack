@@ -22,6 +22,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Hide Dock icon — menu bar only
         NSApp.setActivationPolicy(.accessory)
 
+        // Prevent macOS from restoring stale windows on launch
+        UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
+
+        // Close any windows SwiftUI's Settings scene may have created
+        for window in NSApp.windows where window.title.isEmpty || window.contentView is NSHostingView<AnyView> {
+            window.close()
+        }
+
         setupStatusItem()
 
         // Show onboarding only on first launch — not on every restart
