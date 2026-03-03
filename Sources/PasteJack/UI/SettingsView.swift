@@ -4,6 +4,7 @@ struct SettingsView: View {
 
     @ObservedObject private var settings = UserSettings.shared
     @State private var accessibilityGranted = AccessibilityChecker.hasPermission
+    @State private var screenRecordingGranted = ScreenRecordingChecker.hasPermission
     @State private var pollTimer: Timer?
 
     var body: some View {
@@ -15,6 +16,7 @@ struct SettingsView: View {
                     typingCard
                     behaviorCard
                     hotkeyCard
+                    ocrCard
                     accessibilityCard
                 }
                 .padding(.horizontal, 24)
@@ -24,7 +26,7 @@ struct SettingsView: View {
 
             footer
         }
-        .frame(width: 480, height: 580)
+        .frame(width: 480, height: 660)
         .background(Color(.windowBackgroundColor))
         .onAppear { startPolling() }
         .onDisappear { stopPolling() }
@@ -129,37 +131,112 @@ struct SettingsView: View {
     // MARK: - Hotkey Card
 
     private var hotkeyCard: some View {
-        SettingsCard(icon: "command", iconColor: .orange, title: "Hotkey") {
-            HStack {
-                Text("Paste as Keystrokes")
-                    .foregroundStyle(.secondary)
-                Spacer()
-                HotkeyBadge(keys: ["⌃", "⇧", "V"])
+        SettingsCard(icon: "command", iconColor: .orange, title: "Hotkeys") {
+            VStack(spacing: 10) {
+                HStack {
+                    Text("Paste as Keystrokes")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    HotkeyBadge(keys: ["⌃", "⇧", "V"])
+                }
+                Divider()
+                HStack {
+                    Text("Copy from Screen")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    HotkeyBadge(keys: ["⌃", "⇧", "C"])
+                }
+            }
+        }
+    }
+
+    // MARK: - OCR Card
+
+    private var ocrCard: some View {
+        SettingsCard(icon: "doc.text.viewfinder", iconColor: .teal, title: "Screen OCR") {
+            VStack(spacing: 10) {
+                // Screen Recording permission
+                HStack {
+                    Circle()
+                        .fill(screenRecordingGranted ? .green : .orange)
+                        .frame(width: 8, height: 8)
+                    Text(screenRecordingGranted ? "Screen Recording granted" : "Screen Recording required")
+                        .foregroundStyle(screenRecordingGranted ? .green : .orange)
+                        .font(.callout.weight(.medium))
+                    Spacer()
+                    if !screenRecordingGranted {
+                        Button("Grant Access") {
+                            ScreenRecordingChecker.requestPermission()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    }
+                }
+
+                Divider()
+
+                Toggle("Auto-close result window", isOn: $settings.ocrAutoClose)
+
+                if settings.ocrAutoClose {
+                    HStack {
+                        Text("Close after")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Stepper(
+                            "\(settings.ocrAutoCloseSeconds)s",
+                            value: $settings.ocrAutoCloseSeconds,
+                            in: Constants.minOCRAutoCloseSeconds...Constants.maxOCRAutoCloseSeconds
+                        )
+                        .labelsHidden()
+                        Text("\(settings.ocrAutoCloseSeconds)s")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                            .frame(width: 30, alignment: .trailing)
+                    }
+                }
             }
         }
     }
 
     // MARK: - Accessibility Card
 
+    private var allPermissionsGranted: Bool {
+        accessibilityGranted && screenRecordingGranted
+    }
+
     private var accessibilityCard: some View {
         SettingsCard(
-            icon: accessibilityGranted ? "lock.open.fill" : "lock.fill",
-            iconColor: accessibilityGranted ? .green : .orange,
-            title: "Accessibility"
+            icon: allPermissionsGranted ? "lock.open.fill" : "lock.fill",
+            iconColor: allPermissionsGranted ? .green : .orange,
+            title: "Permissions"
         ) {
-            HStack {
-                Circle()
-                    .fill(accessibilityGranted ? .green : .orange)
-                    .frame(width: 8, height: 8)
-                Text(accessibilityGranted ? "Permission granted" : "Permission required")
-                    .foregroundStyle(accessibilityGranted ? .green : .orange)
-                    .font(.callout.weight(.medium))
-                Spacer()
-                if !accessibilityGranted {
-                    Button("Grant Access") {
-                        AccessibilityChecker.requestPermission()
+            VStack(spacing: 10) {
+                HStack {
+                    Circle()
+                        .fill(accessibilityGranted ? .green : .orange)
+                        .frame(width: 8, height: 8)
+                    Text(accessibilityGranted ? "Accessibility granted" : "Accessibility required")
+                        .foregroundStyle(accessibilityGranted ? .green : .orange)
+                        .font(.callout.weight(.medium))
+                    Spacer()
+                    if !accessibilityGranted {
+                        Button("Grant Access") {
+                            AccessibilityChecker.requestPermission()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
                     }
-                    .buttonStyle(.borderedProminent)
+                }
+
+                if !allPermissionsGranted {
+                    Divider()
+
+                    Button {
+                        NotificationCenter.default.post(name: .showOnboarding, object: nil)
+                    } label: {
+                        Label("Setup Permissions", systemImage: "lock.shield")
+                            .frame(maxWidth: .infinity)
+                    }
                     .controlSize(.small)
                 }
             }
@@ -185,10 +262,12 @@ struct SettingsView: View {
     private func startPolling() {
         pollTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
             Task { @MainActor in
-                let granted = AccessibilityChecker.hasPermission
-                if granted != accessibilityGranted {
+                let accGranted = AccessibilityChecker.hasPermission
+                let scrGranted = ScreenRecordingChecker.hasPermission
+                if accGranted != accessibilityGranted || scrGranted != screenRecordingGranted {
                     withAnimation(.easeInOut(duration: 0.3)) {
-                        accessibilityGranted = granted
+                        accessibilityGranted = accGranted
+                        screenRecordingGranted = scrGranted
                     }
                 }
             }

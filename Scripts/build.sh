@@ -56,7 +56,7 @@ cp Resources/PasteJack.entitlements "${APP_BUNDLE}/Contents/Resources/"
 echo "==> Signing with hardened runtime..."
 codesign --force --deep --options runtime \
     --entitlements Resources/PasteJack.entitlements \
-    --sign "Developer ID Application: YOUR_NAME (TEAM_ID)" \
+    --sign "Developer ID Application: Wolfgang Vieregg (YS8R2WK948)" \
     "${APP_BUNDLE}"
 
 echo "==> Build complete: ${APP_BUNDLE}"

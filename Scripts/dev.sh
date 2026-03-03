@@ -1,6 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
+# Resolve symlinks and cd to project root (works from Desktop shortcut)
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")" && pwd)"
+cd "${SCRIPT_DIR}/.."
+
 APP_NAME="PasteJack"
 BUILD_DIR=".build/debug"
 APP_BUNDLE="${BUILD_DIR}/${APP_NAME}.app"
@@ -32,8 +36,8 @@ cat > "${APP_BUNDLE}/Contents/Info.plist" << 'EOF'
 </plist>
 EOF
 
-echo "==> Signing (ad-hoc with stable bundle ID)..."
-codesign --force --sign - "${APP_BUNDLE}"
+echo "==> Signing (ad-hoc with stable designated requirement)..."
+codesign --force --sign - -r='designated => identifier "com.pastejack.app"' "${APP_BUNDLE}"
 
 echo "==> Launching ${APP_BUNDLE}"
 open "${APP_BUNDLE}"

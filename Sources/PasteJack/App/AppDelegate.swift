@@ -5,27 +5,52 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItem: NSStatusItem!
-    private let hotkeyManager = HotkeyManager()
+    private let hotkeyManager = HotkeyManager(id: 1)
+    private let ocrHotkeyManager = HotkeyManager(id: 2)
     private let session = TypingSession()
     private var cancellable: Any?
     private var settingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
+    private var ocrResultWindow: NSWindow?
+    private let screenSelection = ScreenSelectionOverlay()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Wrap bare executable in .app bundle for stable TCC permissions.
+        // If not already in a bundle, this creates one, re-launches, and exits.
+        DevBundleHelper.ensureRunningFromBundle()
+
         // Hide Dock icon — menu bar only
         NSApp.setActivationPolicy(.accessory)
 
         setupStatusItem()
 
-        // Show onboarding window if Accessibility permission is missing
-        if !AccessibilityChecker.hasPermission {
+        // Show onboarding only on first launch — not on every restart
+        if !UserSettings.shared.hasSeenOnboarding {
             showOnboarding()
         }
 
-        // Register global hotkey (Ctrl+Shift+V)
+        // Listen for manual "show onboarding" requests from Settings
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(showOnboardingFromNotification),
+            name: .showOnboarding,
+            object: nil
+        )
+
+        // Register global hotkey: Ctrl+Shift+V → Paste as Keystrokes
         hotkeyManager.register { [weak self] in
             Task { @MainActor in
                 self?.handleHotkey()
+            }
+        }
+
+        // Register global hotkey: Ctrl+Shift+C → Copy from Screen (OCR)
+        ocrHotkeyManager.register(
+            keyCode: Constants.defaultOCRHotkeyKeyCode,
+            modifiers: Constants.defaultOCRHotkeyModifiers
+        ) { [weak self] in
+            Task { @MainActor in
+                self?.handleOCRHotkey()
             }
         }
 
@@ -57,6 +82,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pasteItem.target = self
         menu.addItem(pasteItem)
 
+        let ocrItem = NSMenuItem(
+            title: "Copy from Screen (⌃⇧C)",
+            action: #selector(handleOCRHotkey),
+            keyEquivalent: ""
+        )
+        ocrItem.target = self
+        menu.addItem(ocrItem)
+
         let cancelItem = NSMenuItem(
             title: "Cancel Typing",
             action: #selector(cancelTyping),
@@ -86,6 +119,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.delegate = self
         statusItem.menu = menu
     }
+
+    // MARK: - Paste as Keystrokes
 
     @objc private func handleHotkey() {
         guard AccessibilityChecker.hasPermission else {
@@ -117,6 +152,86 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         session.cancel()
     }
 
+    // MARK: - OCR Copy from Screen
+
+    @objc private func handleOCRHotkey() {
+        guard ScreenRecordingChecker.hasPermission else {
+            ScreenRecordingChecker.requestPermission()
+            return
+        }
+
+        startOCRSelection()
+    }
+
+    private func startOCRSelection() {
+        screenSelection.show { [weak self] rect in
+            guard let self, let rect else { return }
+
+            Task { @MainActor in
+                await self.performOCR(on: rect)
+            }
+        }
+    }
+
+    private func performOCR(on rect: CGRect) async {
+        guard let image = await ScreenCapture.captureRect(rect) else { return }
+
+        do {
+            let text = try await OCREngine.recognizeText(from: image)
+            showOCRResult(text: text)
+        } catch {
+            showOCRResult(text: "")
+        }
+    }
+
+    private func showOCRResult(text: String) {
+        ocrResultWindow?.close()
+
+        guard !text.isEmpty else { return }
+
+        let window = NSWindow(
+            contentRect: .zero,
+            styleMask: [.titled, .closable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.title = "PasteJack — OCR Result"
+        window.contentView = NSHostingView(
+            rootView: OCRResultView(
+                text: text,
+                onTypeIt: { [weak self] editedText in
+                    self?.ocrResultWindow?.close()
+                    guard AccessibilityChecker.hasPermission else {
+                        self?.showOnboarding()
+                        return
+                    }
+                    let settings = UserSettings.shared
+                    self?.session.start(
+                        text: editedText,
+                        delayMicroseconds: settings.delayMicroseconds,
+                        countdownSeconds: settings.countdownSeconds
+                    )
+                },
+                onTryAgain: { [weak self] in
+                    self?.ocrResultWindow?.close()
+                    self?.startOCRSelection()
+                },
+                onDismiss: { [weak self] in
+                    self?.ocrResultWindow?.close()
+                }
+            )
+        )
+        window.center()
+        window.isReleasedWhenClosed = false
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        self.ocrResultWindow = window
+    }
+
+    // MARK: - Settings & Onboarding Windows
+
     @objc private func openSettings() {
         if let settingsWindow, settingsWindow.isVisible {
             settingsWindow.makeKeyAndOrderFront(nil)
@@ -139,6 +254,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         self.settingsWindow = window
+    }
+
+    @objc private func showOnboardingFromNotification() {
+        showOnboarding()
     }
 
     private func showOnboarding() {
@@ -169,10 +288,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.onboardingWindow = window
     }
 
+    // MARK: - Status Icon
+
     private func updateStatusIcon(for state: TypingSession.State) {
         let settings = UserSettings.shared
 
-        // If showProgress is off, keep icon at idle (except errors)
         guard settings.showProgress else {
             if case .error = state {
                 StatusIndicator.update(statusItem.button, state: .error)
@@ -190,11 +310,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             iconState = .typing
         case .completed:
             iconState = .completed
-            // Play completion sound
             if settings.playSoundOnComplete {
                 NSSound(named: "Glass")?.play()
             }
-            // Reset to idle after a short delay
             Task {
                 try? await Task.sleep(for: .seconds(2))
                 StatusIndicator.update(statusItem.button, state: .idle)
@@ -206,6 +324,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         StatusIndicator.update(statusItem.button, state: iconState)
     }
+}
+
+// MARK: - Notification Names
+
+extension Notification.Name {
+    static let showOnboarding = Notification.Name("PasteJack.showOnboarding")
 }
 
 // MARK: - NSMenuDelegate

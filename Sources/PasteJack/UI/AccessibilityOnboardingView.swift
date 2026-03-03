@@ -2,19 +2,39 @@ import SwiftUI
 
 struct AccessibilityOnboardingView: View {
 
-    @State private var permissionGranted = AccessibilityChecker.hasPermission
+    @State private var accessibilityGranted = AccessibilityChecker.hasPermission
+    @State private var screenRecordingGranted = ScreenRecordingChecker.hasPermission
     @State private var pollTimer: Timer?
     @State private var pulseAnimation = false
+    @State private var autoDismissScheduled = false
     var onDismiss: (() -> Void)?
+
+    private var allGranted: Bool {
+        accessibilityGranted && screenRecordingGranted
+    }
+
+    private var grantedCount: Int {
+        (accessibilityGranted ? 1 : 0) + (screenRecordingGranted ? 1 : 0)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             gradientHeader
-            cardSection
+
+            ScrollView {
+                VStack(spacing: 14) {
+                    permissionsCard
+                    privacyCard
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 20)
+                .padding(.bottom, 8)
+            }
+
             Spacer(minLength: 12)
             footerSection
         }
-        .frame(width: 480, height: 520)
+        .frame(width: 480, height: 580)
         .background(Color(.windowBackgroundColor))
         .onAppear { startPolling() }
         .onDisappear { stopPolling() }
@@ -55,42 +75,97 @@ struct AccessibilityOnboardingView: View {
         ))
     }
 
-    // MARK: - Cards
+    // MARK: - Permissions Card
 
-    private var cardSection: some View {
-        VStack(spacing: 14) {
-            // Card 1: Why
-            OnboardingCard(
-                icon: "lock.shield.fill",
-                iconColor: .blue,
-                title: "Why this permission?"
-            ) {
-                Text("PasteJack uses the macOS Accessibility API to simulate keystrokes — this lets you \"type\" clipboard contents into apps that block pasting.")
-                Text("macOS requires your explicit approval for this. It's a one-time security measure by Apple.")
-            }
+    private var permissionsCard: some View {
+        OnboardingCard(
+            icon: "lock.shield.fill",
+            iconColor: .blue,
+            title: "Required Permissions"
+        ) {
+            VStack(spacing: 14) {
+                permissionRow(
+                    icon: "keyboard",
+                    title: "Accessibility",
+                    description: "Simulates keystrokes to paste into apps that block clipboard access.",
+                    granted: accessibilityGranted,
+                    action: { AccessibilityChecker.requestPermission() }
+                )
 
-            // Card 2: Privacy
-            OnboardingCard(
-                icon: "eye.slash.fill",
-                iconColor: .green,
-                title: "Your Privacy"
-            ) {
-                PrivacyBullet(text: "No keylogging — only sends outgoing keystrokes")
-                PrivacyBullet(text: "No network — runs 100% offline on your Mac")
-                PrivacyBullet(text: "No background activity — only runs when you trigger it")
+                Divider()
+
+                permissionRow(
+                    icon: "rectangle.dashed.badge.record",
+                    title: "Screen Recording",
+                    description: "Captures screen regions for OCR text recognition.",
+                    granted: screenRecordingGranted,
+                    action: { ScreenRecordingChecker.requestPermission() }
+                )
             }
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 20)
+    }
+
+    private func permissionRow(
+        icon: String,
+        title: String,
+        description: String,
+        granted: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(granted ? .green : .orange)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(title)
+                        .font(.callout.weight(.semibold))
+                    Spacer()
+                    if granted {
+                        Label("Granted", systemImage: "checkmark.circle.fill")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.green)
+                    } else {
+                        Button("Grant Access") { action() }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                    }
+                }
+                Text(description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: - Privacy Card
+
+    private var privacyCard: some View {
+        OnboardingCard(
+            icon: "eye.slash.fill",
+            iconColor: .green,
+            title: "Your Privacy"
+        ) {
+            PrivacyBullet(text: "No keylogging \u{2014} only sends outgoing keystrokes")
+            PrivacyBullet(text: "No network \u{2014} runs 100% offline on your Mac")
+            PrivacyBullet(text: "No background activity \u{2014} only runs when you trigger it")
+        }
     }
 
     // MARK: - Footer
 
+    private func dismiss() {
+        UserSettings.shared.hasSeenOnboarding = true
+        onDismiss?()
+    }
+
     private var footerSection: some View {
         VStack(spacing: 12) {
-            if permissionGranted {
+            if allGranted {
                 Button {
-                    onDismiss?()
+                    dismiss()
                 } label: {
                     Label("Get Started", systemImage: "arrow.right.circle.fill")
                         .frame(maxWidth: .infinity)
@@ -100,9 +175,14 @@ struct AccessibilityOnboardingView: View {
                 .controlSize(.large)
             } else {
                 Button {
-                    AccessibilityChecker.requestPermission()
+                    if !accessibilityGranted {
+                        AccessibilityChecker.requestPermission()
+                    }
+                    if !screenRecordingGranted {
+                        ScreenRecordingChecker.requestPermission()
+                    }
                 } label: {
-                    Label("Open System Settings", systemImage: "gear")
+                    Label("Grant All Permissions", systemImage: "lock.open")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
@@ -118,26 +198,28 @@ struct AccessibilityOnboardingView: View {
     private var statusPill: some View {
         HStack(spacing: 8) {
             Circle()
-                .fill(permissionGranted ? .green : .orange)
+                .fill(allGranted ? .green : .orange)
                 .frame(width: 8, height: 8)
-                .scaleEffect(pulseAnimation && !permissionGranted ? 1.4 : 1.0)
-                .opacity(pulseAnimation && !permissionGranted ? 0.5 : 1.0)
+                .scaleEffect(pulseAnimation && !allGranted ? 1.4 : 1.0)
+                .opacity(pulseAnimation && !allGranted ? 0.5 : 1.0)
                 .animation(
-                    permissionGranted
+                    allGranted
                         ? .default
                         : .easeInOut(duration: 0.8).repeatForever(autoreverses: true),
                     value: pulseAnimation
                 )
 
-            Text(permissionGranted ? "Permission granted" : "Waiting for permission...")
+            Text(allGranted
+                 ? "All permissions granted"
+                 : "\(grantedCount) of 2 permissions granted")
                 .font(.caption)
-                .foregroundStyle(permissionGranted ? .green : .secondary)
+                .foregroundStyle(allGranted ? .green : .secondary)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 6)
         .background(
             Capsule()
-                .fill(permissionGranted
+                .fill(allGranted
                       ? Color.green.opacity(0.1)
                       : Color.secondary.opacity(0.08))
         )
@@ -149,11 +231,20 @@ struct AccessibilityOnboardingView: View {
     private func startPolling() {
         pollTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             Task { @MainActor in
-                let granted = AccessibilityChecker.hasPermission
-                if granted != permissionGranted {
+                let accGranted = AccessibilityChecker.hasPermission
+                let scrGranted = ScreenRecordingChecker.hasPermission
+                if accGranted != accessibilityGranted || scrGranted != screenRecordingGranted {
                     withAnimation(.easeInOut(duration: 0.3)) {
-                        permissionGranted = granted
+                        accessibilityGranted = accGranted
+                        screenRecordingGranted = scrGranted
                     }
+                }
+
+                // Auto-dismiss when all permissions are granted
+                if accGranted && scrGranted && !autoDismissScheduled {
+                    autoDismissScheduled = true
+                    try? await Task.sleep(for: .seconds(1.5))
+                    dismiss()
                 }
             }
         }

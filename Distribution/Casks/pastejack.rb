@@ -2,10 +2,10 @@ cask "pastejack" do
   version "0.1.0"
   sha256 "PLACEHOLDER_SHA256"
 
-  url "https://github.com/YOURUSER/PasteJack/releases/download/v#{version}/PasteJack-#{version}.dmg"
+  url "https://github.com/wollux/PasteJack/releases/download/v#{version}/PasteJack-#{version}.dmg"
   name "PasteJack"
   desc "Paste clipboard contents as simulated keystrokes — bypass paste-blocking"
-  homepage "https://github.com/YOURUSER/PasteJack"
+  homepage "https://github.com/wollux/PasteJack"
 
   livecheck do
     url :url

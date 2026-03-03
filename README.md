@@ -13,13 +13,13 @@ The key insight: `CGEvent.keyboardSetUnicodeString()` sends Unicode characters d
 ### Homebrew (recommended)
 
 ```bash
-brew tap youruser/tap
+brew tap wollux/tap
 brew install --cask pastejack
 ```
 
 ### Manual
 
-1. Download the latest `.dmg` from [Releases](https://github.com/YOURUSER/PasteJack/releases)
+1. Download the latest `.dmg` from [Releases](https://github.com/wollux/PasteJack/releases)
 2. Drag PasteJack to Applications
 3. Launch PasteJack
 4. Grant Accessibility permission when prompted
@@ -59,7 +59,7 @@ PasteJack lives in your menu bar. Click the keyboard icon to:
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOURUSER/PasteJack.git
+git clone https://github.com/wollux/PasteJack.git
 cd PasteJack
 
 # Build (debug)

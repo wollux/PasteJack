@@ -26,6 +26,19 @@ final class UserSettings: ObservableObject {
     /// Maximum characters to type (safety limit)
     @AppStorage("maxCharacters") var maxCharacters: Int = Constants.defaultMaxCharacters
 
+    // MARK: - Onboarding
+
+    /// Whether the user has completed the initial onboarding
+    @AppStorage("hasSeenOnboarding") var hasSeenOnboarding: Bool = false
+
+    // MARK: - OCR Settings
+
+    /// Auto-close OCR result window
+    @AppStorage("ocrAutoClose") var ocrAutoClose: Bool = false
+
+    /// Seconds before OCR result window auto-closes
+    @AppStorage("ocrAutoCloseSeconds") var ocrAutoCloseSeconds: Int = Constants.defaultOCRAutoCloseSeconds
+
     /// Computed: delay in microseconds for usleep()
     var delayMicroseconds: UInt32 {
         UInt32(keystrokeDelayMs * 1000)

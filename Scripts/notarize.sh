@@ -4,8 +4,8 @@ set -euo pipefail
 APP_NAME="PasteJack"
 VERSION=$(git describe --tags --always 2>/dev/null || echo "0.1.0")
 DMG_FILE=".build/${APP_NAME}-${VERSION}.dmg"
-APPLE_ID="${APPLE_ID:-your@apple-id.com}"
-TEAM_ID="${TEAM_ID:-YOUR_TEAM_ID}"
+APPLE_ID="${APPLE_ID:-wollux@rootwatch.org}"
+TEAM_ID="${TEAM_ID:-YS8R2WK948}"
 APP_PASSWORD="${AC_PASSWORD:-@keychain:AC_PASSWORD}"
 
 echo "==> Submitting ${DMG_FILE} for notarization..."
