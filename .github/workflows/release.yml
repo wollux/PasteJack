@@ -50,3 +50,64 @@ jobs:
         with:
           files: .build/PasteJack-*.dmg
           generate_release_notes: true
+
+      - name: Update Homebrew Tap
+        env:
+          TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          DMG_FILE="$(ls .build/PasteJack-*.dmg)"
+          SHA256="$(shasum -a 256 "$DMG_FILE" | awk '{print $1}')"
+
+          echo "==> Updating homebrew-tap: version=${VERSION} sha256=${SHA256}"
+
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/wollux/homebrew-tap.git" /tmp/homebrew-tap
+          cd /tmp/homebrew-tap
+
+          cat > Casks/pastejack.rb << 'CASK_EOF'
+          cask "pastejack" do
+            version "VERSION_PLACEHOLDER"
+            sha256 "SHA256_PLACEHOLDER"
+
+            url "https://github.com/wollux/PasteJack/releases/download/v#{version}/PasteJack-#{version}.dmg"
+            name "PasteJack"
+            desc "Paste clipboard contents as simulated keystrokes — bypass paste-blocking"
+            homepage "https://github.com/wollux/PasteJack"
+
+            livecheck do
+              url :url
+              strategy :github_latest
+            end
+
+            depends_on macos: ">= :sonoma"
+
+            app "PasteJack.app"
+
+            zap trash: [
+              "~/Library/Preferences/com.pastejack.app.plist",
+              "~/Library/Application Support/PasteJack",
+            ]
+
+            caveats <<~EOS
+              PasteJack requires Accessibility permission to simulate keystrokes.
+
+              After installation, go to:
+                System Settings > Privacy & Security > Accessibility
+              and enable PasteJack.
+
+              Default hotkey: Ctrl+Shift+V
+            EOS
+          end
+          CASK_EOF
+
+          sed -i '' "s/VERSION_PLACEHOLDER/${VERSION}/" Casks/pastejack.rb
+          sed -i '' "s/SHA256_PLACEHOLDER/${SHA256}/" Casks/pastejack.rb
+
+          # Remove leading whitespace from heredoc
+          sed -i '' 's/^          //' Casks/pastejack.rb
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/pastejack.rb
+          git commit -m "Update PasteJack to ${VERSION}"
+          git push
