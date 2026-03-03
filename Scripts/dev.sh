@@ -1,0 +1,39 @@
+#!/bin/bash
+set -euo pipefail
+
+APP_NAME="PasteJack"
+BUILD_DIR=".build/debug"
+APP_BUNDLE="${BUILD_DIR}/${APP_NAME}.app"
+
+echo "==> Building ${APP_NAME} (debug)..."
+swift build
+
+echo "==> Creating dev app bundle..."
+mkdir -p "${APP_BUNDLE}/Contents/MacOS"
+
+cp "${BUILD_DIR}/${APP_NAME}" "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
+
+cat > "${APP_BUNDLE}/Contents/Info.plist" << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.pastejack.app</string>
+    <key>CFBundleName</key>
+    <string>PasteJack</string>
+    <key>CFBundleExecutable</key>
+    <string>PasteJack</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>LSUIElement</key>
+    <true/>
+</dict>
+</plist>
+EOF
+
+echo "==> Signing (ad-hoc with stable bundle ID)..."
+codesign --force --sign - "${APP_BUNDLE}"
+
+echo "==> Launching ${APP_BUNDLE}"
+open "${APP_BUNDLE}"

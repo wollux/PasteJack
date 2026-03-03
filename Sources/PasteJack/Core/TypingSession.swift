@@ -1,0 +1,88 @@
+import Combine
+import CoreGraphics
+
+/// Orchestrates a full typing session with progress, cancellation, and error handling.
+@MainActor
+final class TypingSession: ObservableObject {
+
+    enum State: Equatable {
+        case idle
+        case countdown(remaining: Int)
+        case typing(progress: Double, current: Int, total: Int)
+        case completed
+        case cancelled
+        case error(String)
+    }
+
+    @Published var state: State = .idle
+
+    private let engine = KeystrokeEngine()
+    private var task: Task<Void, Never>?
+
+    /// Start typing the given text with configurable delay per character.
+    func start(text: String, delayMicroseconds: UInt32, countdownSeconds: Int) {
+        cancel()
+
+        let characters = Array(text)
+        let total = characters.count
+
+        task = Task { [weak self] in
+            guard let self else { return }
+
+            // Countdown phase — gives user time to focus the target window
+            for i in stride(from: countdownSeconds, through: 1, by: -1) {
+                self.state = .countdown(remaining: i)
+                try? await Task.sleep(for: .seconds(1))
+                if Task.isCancelled { self.state = .cancelled; return }
+            }
+
+            // Typing phase
+            for (index, char) in characters.enumerated() {
+                if Task.isCancelled { self.state = .cancelled; return }
+
+                self.state = .typing(
+                    progress: Double(index + 1) / Double(total),
+                    current: index + 1,
+                    total: total
+                )
+
+                if let control = ControlCharMapping.map[char] {
+                    self.engine.typeControlCharacter(
+                        control.keyCode,
+                        modifiers: control.modifiers,
+                        delay: delayMicroseconds
+                    )
+                } else if ControlCharMapping.isControlCharacter(char) {
+                    // Skip unknown control characters
+                    continue
+                } else {
+                    self.engine.typeCharacter(char, delay: delayMicroseconds)
+                }
+            }
+
+            self.state = .completed
+        }
+    }
+
+    func cancel() {
+        task?.cancel()
+        task = nil
+        if state != .idle {
+            state = .cancelled
+        }
+    }
+
+    func reset() {
+        cancel()
+        state = .idle
+    }
+
+    var isActive: Bool {
+        switch state {
+        case .countdown, .typing:
+            return true
+        default:
+            return false
+        }
+    }
+}
