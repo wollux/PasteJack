@@ -2,9 +2,9 @@
 set -euo pipefail
 
 APP_NAME="PasteJack"
-BUILD_DIR=".build/release"
-APP_BUNDLE="${BUILD_DIR}/${APP_NAME}.app"
 VERSION=$(git describe --tags --always 2>/dev/null || echo "0.1.0")
+# Strip leading 'v' from git tag (v0.1.0 → 0.1.0)
+VERSION="${VERSION#v}"
 
 echo "==> Building ${APP_NAME} v${VERSION}..."
 
@@ -13,7 +13,11 @@ swift build -c release \
     --arch arm64 \
     --arch x86_64
 
-BINARY="${BUILD_DIR}/${APP_NAME}"
+# Find the binary (universal builds use .build/apple/Products/Release/)
+BIN_PATH="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)"
+BINARY="${BIN_PATH}/${APP_NAME}"
+BUILD_DIR=".build/release"
+APP_BUNDLE="${BUILD_DIR}/${APP_NAME}.app"
 
 echo "==> Creating app bundle..."
 rm -rf "${APP_BUNDLE}"
