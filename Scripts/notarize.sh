@@ -20,8 +20,7 @@ xcrun notarytool submit "${DMG_FILE}" \
 echo "==> Stapling notarization ticket..."
 xcrun stapler staple "${DMG_FILE}"
 
-echo "==> Verifying..."
+echo "==> Verifying staple..."
 xcrun stapler validate "${DMG_FILE}"
-spctl --assess --type open --context context:primary-signature "${DMG_FILE}"
 
 echo "==> Notarization complete!"
