@@ -211,7 +211,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self?.session.start(
                         text: editedText,
                         delayMicroseconds: settings.delayMicroseconds,
-                        countdownSeconds: settings.countdownSeconds
+                        countdownSeconds: 0
                     )
                 },
                 onTryAgain: { [weak self] in

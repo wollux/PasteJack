@@ -247,7 +247,7 @@ struct SettingsView: View {
 
     private var footer: some View {
         VStack(spacing: 2) {
-            Text("PasteJack v0.1.0")
+            Text("PasteJack v\(Constants.appVersion)")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
             Text("Made by Wolfgang Vieregg")

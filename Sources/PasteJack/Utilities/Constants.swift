@@ -2,6 +2,10 @@ import Foundation
 
 enum Constants {
     static let appName = "PasteJack"
+
+    static var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
+    }
     static let bundleIdentifier = "com.pastejack.app"
 
     // Default settings
