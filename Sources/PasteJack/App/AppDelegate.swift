@@ -140,7 +140,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onSnippets: { [weak self] in self?.openSnippetLibrary() },
             onQuit: { NSApp.terminate(nil) },
             dismissPopover: { [weak self] in self?.closePopover() },
-            onRetypeHistory: { [weak self] text in self?.startTypingSession(text: text) }
+            onTypingHistory: { [weak self] in self?.openTypingHistory() },
+            onOCRHistory: { [weak self] in self?.openOCRHistory() }
         )
 
         let pop = NSPopover()
@@ -485,6 +486,73 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         self.snippetWindow = window
+    }
+
+    // MARK: - History Windows
+
+    private var typingHistoryWindow: NSWindow?
+    private var ocrHistoryWindow: NSWindow?
+
+    @objc private func openTypingHistory() {
+        if let typingHistoryWindow, typingHistoryWindow.isVisible {
+            typingHistoryWindow.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let window = NSWindow(
+            contentRect: .zero,
+            styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.title = "PasteJack — Typing History"
+        window.contentView = NSHostingView(
+            rootView: TypingHistoryView(
+                onTypeEntry: { [weak self] text in
+                    self?.typingHistoryWindow?.close()
+                    self?.startTypingSession(text: text)
+                }
+            )
+        )
+        window.center()
+        window.isReleasedWhenClosed = false
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        self.typingHistoryWindow = window
+    }
+
+    @objc private func openOCRHistory() {
+        if let ocrHistoryWindow, ocrHistoryWindow.isVisible {
+            ocrHistoryWindow.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let window = NSWindow(
+            contentRect: .zero,
+            styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.title = "PasteJack — OCR History"
+        window.contentView = NSHostingView(
+            rootView: OCRHistoryView(
+                onTypeEntry: { [weak self] text in
+                    self?.ocrHistoryWindow?.close()
+                    self?.startTypingSession(text: text)
+                }
+            )
+        )
+        window.center()
+        window.isReleasedWhenClosed = false
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        self.ocrHistoryWindow = window
     }
 
     // MARK: - Settings & Onboarding Windows
