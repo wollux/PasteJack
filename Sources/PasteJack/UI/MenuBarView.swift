@@ -13,7 +13,10 @@ struct MenuBarView: View {
     let onSnippets: () -> Void
     let onQuit: () -> Void
     let dismissPopover: () -> Void
+    let onRetypeHistory: ((String) -> Void)?
 
+    @ObservedObject private var typingHistory = TypingHistory.shared
+    @ObservedObject private var ocrHistory = OCRHistory.shared
     @State private var hoveredItem: String?
 
     var body: some View {
@@ -21,6 +24,10 @@ struct MenuBarView: View {
             statusSection
             menuDivider
             actionItems
+            if !typingHistory.entries.isEmpty || !ocrHistory.entries.isEmpty {
+                menuDivider
+                historySection
+            }
             menuDivider
             snippetAndSettingsItems
             menuDivider
@@ -175,6 +182,72 @@ struct MenuBarView: View {
                     tintColor: .red
                 ) {
                     onCancel()
+                }
+            }
+        }
+    }
+
+    // MARK: - History
+
+    private var historySection: some View {
+        VStack(spacing: 0) {
+            if !typingHistory.entries.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                    Text("TYPING HISTORY")
+                        .font(.system(size: 9, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.tertiary)
+                        .tracking(1.0)
+                    Spacer()
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 6)
+                .padding(.bottom, 2)
+
+                ForEach(typingHistory.entries.prefix(5)) { entry in
+                    menuItem(
+                        id: "th-\(entry.id.uuidString)",
+                        icon: "doc.text",
+                        label: String(entry.preview.prefix(30)) + (entry.preview.count > 30 ? "\u{2026}" : ""),
+                        shortcut: entry.timeAgo
+                    ) {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(entry.fullText, forType: .string)
+                        dismissPopover()
+                        onRetypeHistory?(entry.fullText)
+                    }
+                }
+            }
+
+            if !ocrHistory.entries.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "doc.text.viewfinder")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                    Text("OCR HISTORY")
+                        .font(.system(size: 9, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.tertiary)
+                        .tracking(1.0)
+                    Spacer()
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 6)
+                .padding(.bottom, 2)
+
+                ForEach(ocrHistory.entries.prefix(5)) { entry in
+                    let langLabel = entry.detectedLanguages.first ?? ""
+                    menuItem(
+                        id: "ocr-\(entry.id.uuidString)",
+                        icon: "text.viewfinder",
+                        label: String(entry.preview.prefix(30)) + (entry.preview.count > 30 ? "\u{2026}" : ""),
+                        shortcut: langLabel.isEmpty ? entry.timeAgo : "\(langLabel) \u{00B7} \(entry.timeAgo)"
+                    ) {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(entry.text, forType: .string)
+                        dismissPopover()
+                    }
                 }
             }
         }

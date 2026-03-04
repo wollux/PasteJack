@@ -7,6 +7,7 @@ struct OCRResultView: View {
     @State private var isEditing = false
     @State private var timer: Timer?
     @State private var copiedToClipboard = false
+    @State private var showingHistory = false
 
     let detectedLanguages: [String]
     let onTypeIt: (String) -> Void
@@ -53,6 +54,7 @@ struct OCRResultView: View {
         }
         .frame(width: 620, height: 480)
         .background(Color(.windowBackgroundColor))
+        .onAppear { if autoCloseEnabled { startAutoClose() } }
         .onDisappear { timer?.invalidate() }
     }
 
@@ -109,6 +111,21 @@ struct OCRResultView: View {
                                 .padding(.vertical, 3)
                                 .background(Capsule().fill(.white.opacity(0.15)))
                         }
+                    }
+                }
+
+                Button {
+                    showingHistory.toggle()
+                } label: {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: $showingHistory) {
+                    OCRHistoryPopover { text in
+                        recognizedText = text
+                        showingHistory = false
                     }
                 }
             }
@@ -277,5 +294,79 @@ private struct StatBox: View {
             RoundedRectangle(cornerRadius: 8)
                 .strokeBorder(.quaternary, lineWidth: 0.5)
         )
+    }
+}
+
+// MARK: - OCR History Popover
+
+private struct OCRHistoryPopover: View {
+    @ObservedObject private var history = OCRHistory.shared
+    let onSelect: (String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("OCR History")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                Spacer()
+                if !history.entries.isEmpty {
+                    Button("Clear") {
+                        history.clear()
+                    }
+                    .font(.system(size: 11))
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 10)
+            .padding(.bottom, 6)
+
+            if history.entries.isEmpty {
+                Text("No OCR history yet")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 10)
+            } else {
+                ScrollView {
+                    VStack(spacing: 2) {
+                        ForEach(history.entries.prefix(10)) { entry in
+                            Button {
+                                onSelect(entry.text)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(entry.preview)
+                                        .font(.system(size: 11, design: .monospaced))
+                                        .lineLimit(2)
+                                        .foregroundStyle(.primary)
+
+                                    HStack(spacing: 6) {
+                                        Text("\(entry.charCount) chars")
+                                            .font(.system(size: 9, design: .monospaced))
+                                            .foregroundStyle(.quaternary)
+                                        if let lang = entry.detectedLanguages.first {
+                                            Text(lang)
+                                                .font(.system(size: 9, design: .monospaced))
+                                                .foregroundStyle(.quaternary)
+                                        }
+                                        Spacer()
+                                        Text(entry.timeAgo)
+                                            .font(.system(size: 9))
+                                            .foregroundStyle(.quaternary)
+                                    }
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .frame(maxHeight: 250)
+            }
+        }
+        .frame(width: 280)
     }
 }

@@ -214,6 +214,24 @@ struct SettingsView: View {
 
                 CompactDivider()
 
+                CompactRowWithInfo("OCR Language", info: "Preferred language for OCR text recognition. Auto uses system defaults.") {
+                    Picker("", selection: $settings.ocrPreferredLanguage) {
+                        Text("Auto").tag("")
+                        Text("English").tag("en-US")
+                        Text("German").tag("de-DE")
+                        Text("French").tag("fr-FR")
+                        Text("Spanish").tag("es-ES")
+                        Text("Italian").tag("it-IT")
+                        Text("Portuguese").tag("pt-BR")
+                        Text("Chinese").tag("zh-Hans")
+                        Text("Japanese").tag("ja-JP")
+                        Text("Korean").tag("ko-KR")
+                    }
+                    .frame(width: 100)
+                }
+
+                CompactDivider()
+
                 CompactRowWithInfo("Appearance", info: "Override the system appearance for PasteJack windows.") {
                     Picker("", selection: $settings.appearanceMode) {
                         Text("System").tag("system")

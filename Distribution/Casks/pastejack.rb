@@ -1,5 +1,5 @@
 cask "pastejack" do
-  version "0.8.0"
+  version "0.8.1"
   sha256 :no_check
 
   url "https://github.com/wollux/PasteJack/releases/download/v#{version}/PasteJack-#{version}.dmg"

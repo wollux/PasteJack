@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let screenSelection = ScreenSelectionOverlay()
     private var popover: NSPopover?
     private var eventMonitor: Any?
+    private var escapeMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Wrap bare executable in .app bundle for stable TCC permissions.
@@ -138,7 +139,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onSettings: { [weak self] in self?.openSettings() },
             onSnippets: { [weak self] in self?.openSnippetLibrary() },
             onQuit: { NSApp.terminate(nil) },
-            dismissPopover: { [weak self] in self?.closePopover() }
+            dismissPopover: { [weak self] in self?.closePopover() },
+            onRetypeHistory: { [weak self] text in self?.startTypingSession(text: text) }
         )
 
         let pop = NSPopover()
@@ -635,11 +637,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         window.orderFront(nil)
         self.typingOverlayWindow = window
+
+        // Monitor Escape key to cancel typing
+        escapeMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if event.keyCode == 53 { // Escape
+                Task { @MainActor in
+                    self?.cancelTyping()
+                }
+            }
+        }
     }
 
     private func hideTypingOverlay() {
         typingOverlayWindow?.orderOut(nil)
         typingOverlayWindow = nil
+
+        if let escapeMonitor {
+            NSEvent.removeMonitor(escapeMonitor)
+        }
+        escapeMonitor = nil
     }
 }
 
