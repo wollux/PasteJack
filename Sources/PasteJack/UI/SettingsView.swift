@@ -9,106 +9,137 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            gradientHeader
-
-            ScrollView {
-                VStack(spacing: 14) {
-                    typingCard
-                    behaviorCard
-                    hotkeyCard
-                    ocrCard
-                    accessibilityCard
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 20)
-                .padding(.bottom, 8)
-            }
-
+            compactHeader
+            gridBody
             footer
         }
-        .frame(width: 480, height: 660)
+        .frame(width: 560, height: 540)
         .background(Color(.windowBackgroundColor))
         .onAppear { startPolling() }
         .onDisappear { stopPolling() }
     }
 
-    // MARK: - Gradient Header
+    // MARK: - Compact Header
 
-    private var gradientHeader: some View {
-        ZStack {
+    private var compactHeader: some View {
+        ZStack(alignment: .leading) {
             LinearGradient(
-                colors: [.indigo, .blue, .cyan],
+                colors: [
+                    Color(red: 0.26, green: 0.22, blue: 0.79),  // #4338CA
+                    Color(red: 0.15, green: 0.39, blue: 0.92),  // #2563EB
+                    Color(red: 0.03, green: 0.57, blue: 0.70),  // #0891B2
+                ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
 
-            VStack(spacing: 8) {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 36, weight: .thin))
-                    .foregroundStyle(.white.opacity(0.9))
-
-                Text("PasteJack Settings")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+            // Subtle glare overlay
+            VStack {
+                LinearGradient(
+                    colors: [.white.opacity(0.07), .clear],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 30)
+                Spacer()
             }
-            .padding(.vertical, 20)
+
+            HStack(spacing: 12) {
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: 26))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .shadow(color: .black.opacity(0.3), radius: 6, y: 2)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("PasteJack Settings")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+
+                    Text("v\(Constants.appVersion)")
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.5))
+                }
+            }
+            .padding(.horizontal, 20)
         }
-        .frame(height: 120)
-        .clipShape(UnevenRoundedRectangle(
-            topLeadingRadius: 0,
-            bottomLeadingRadius: 20,
-            bottomTrailingRadius: 20,
-            topTrailingRadius: 0
-        ))
+        .frame(height: 56)
+    }
+
+    // MARK: - 2-Column Grid Body
+
+    private var gridBody: some View {
+        VStack(spacing: 0) {
+            // Top row: Typing + Behavior
+            HStack(alignment: .top, spacing: 10) {
+                typingCard
+                behaviorCard
+            }
+
+            Spacer().frame(height: 10)
+
+            // Bottom row: Hotkeys + Permissions
+            HStack(alignment: .top, spacing: 10) {
+                hotkeyCard
+                permissionsCard
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 14)
     }
 
     // MARK: - Typing Card
 
     private var typingCard: some View {
-        SettingsCard(icon: "keyboard", iconColor: .blue, title: "Typing") {
-            VStack(spacing: 12) {
-                HStack {
-                    Text("Speed")
-                        .frame(width: 70, alignment: .leading)
+        CompactCard(icon: "keyboard", label: "Typing") {
+            VStack(spacing: 0) {
+                // Speed slider
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Speed")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text("\(Int(settings.keystrokeDelayMs))ms")
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(.indigo)
+                    }
+
                     Slider(
                         value: $settings.keystrokeDelayMs,
                         in: Constants.minDelayMs...Constants.maxDelayMs,
                         step: Constants.delayStepMs
                     )
-                    Text("\(Int(settings.keystrokeDelayMs))ms")
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                        .frame(width: 48, alignment: .trailing)
+                    .tint(.indigo)
+
+                    HStack {
+                        Text("5ms fast")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.quaternary)
+                        Spacer()
+                        Text("200ms slow")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.quaternary)
+                    }
                 }
 
-                Divider()
+                CompactDivider()
 
-                HStack {
-                    Text("Countdown")
-                        .frame(width: 90, alignment: .leading)
-                    Spacer()
+                CompactRow("Countdown") {
                     Stepper(
                         "\(settings.countdownSeconds)s",
                         value: $settings.countdownSeconds,
                         in: Constants.minCountdownSeconds...Constants.maxCountdownSeconds
                     )
                     .labelsHidden()
-                    Text("\(settings.countdownSeconds)s")
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                        .frame(width: 30, alignment: .trailing)
+                    .controlSize(.mini)
                 }
 
-                Divider()
+                CompactDivider()
 
-                HStack {
-                    Text("Max characters")
-                        .frame(width: 110, alignment: .leading)
-                    Spacer()
-                    TextField("", value: $settings.maxCharacters, format: .number)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 90)
-                        .multilineTextAlignment(.trailing)
+                CompactRow("Max chars") {
+                    Text("\(settings.maxCharacters.formatted())")
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(.primary.opacity(0.8))
                 }
             }
         }
@@ -117,13 +148,15 @@ struct SettingsView: View {
     // MARK: - Behavior Card
 
     private var behaviorCard: some View {
-        SettingsCard(icon: "slider.horizontal.3", iconColor: .purple, title: "Behavior") {
-            VStack(spacing: 10) {
-                Toggle("Launch at Login", isOn: $settings.launchAtLogin)
-                Divider()
-                Toggle("Play sound on completion", isOn: $settings.playSoundOnComplete)
-                Divider()
-                Toggle("Show progress in menu bar", isOn: $settings.showProgress)
+        CompactCard(icon: "bolt", label: "Behavior") {
+            VStack(spacing: 0) {
+                CompactToggleRow("Launch at Login", isOn: $settings.launchAtLogin)
+                CompactDivider()
+                CompactToggleRow("Play sound", isOn: $settings.playSoundOnComplete)
+                CompactDivider()
+                CompactToggleRow("Show progress", isOn: $settings.showProgress)
+                CompactDivider()
+                CompactToggleRow("Auto-close OCR", isOn: $settings.ocrAutoClose)
             }
         }
     }
@@ -131,130 +164,82 @@ struct SettingsView: View {
     // MARK: - Hotkey Card
 
     private var hotkeyCard: some View {
-        SettingsCard(icon: "command", iconColor: .orange, title: "Hotkeys") {
-            VStack(spacing: 10) {
-                HStack {
-                    Text("Paste as Keystrokes")
-                        .foregroundStyle(.secondary)
-                    Spacer()
+        CompactCard(icon: "command", label: "Hotkeys") {
+            VStack(spacing: 0) {
+                CompactRow("Paste as Keystrokes") {
                     HotkeyBadge(keys: ["⌃", "⇧", "V"])
                 }
-                Divider()
-                HStack {
-                    Text("Copy from Screen")
-                        .foregroundStyle(.secondary)
-                    Spacer()
+                CompactDivider()
+                CompactRow("Copy from Screen") {
                     HotkeyBadge(keys: ["⌃", "⇧", "C"])
                 }
             }
         }
     }
 
-    // MARK: - OCR Card
-
-    private var ocrCard: some View {
-        SettingsCard(icon: "doc.text.viewfinder", iconColor: .teal, title: "Screen OCR") {
-            VStack(spacing: 10) {
-                // Screen Recording permission
-                HStack {
-                    Circle()
-                        .fill(screenRecordingGranted ? .green : .orange)
-                        .frame(width: 8, height: 8)
-                    Text(screenRecordingGranted ? "Screen Recording granted" : "Screen Recording required")
-                        .foregroundStyle(screenRecordingGranted ? .green : .orange)
-                        .font(.callout.weight(.medium))
-                    Spacer()
-                    if !screenRecordingGranted {
-                        Button("Grant Access") {
-                            ScreenRecordingChecker.requestPermission()
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                    }
-                }
-
-                Divider()
-
-                Toggle("Auto-close result window", isOn: $settings.ocrAutoClose)
-
-                if settings.ocrAutoClose {
-                    HStack {
-                        Text("Close after")
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Stepper(
-                            "\(settings.ocrAutoCloseSeconds)s",
-                            value: $settings.ocrAutoCloseSeconds,
-                            in: Constants.minOCRAutoCloseSeconds...Constants.maxOCRAutoCloseSeconds
-                        )
-                        .labelsHidden()
-                        Text("\(settings.ocrAutoCloseSeconds)s")
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                            .frame(width: 30, alignment: .trailing)
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - Accessibility Card
+    // MARK: - Permissions Card
 
     private var allPermissionsGranted: Bool {
         accessibilityGranted && screenRecordingGranted
     }
 
-    private var accessibilityCard: some View {
-        SettingsCard(
-            icon: allPermissionsGranted ? "lock.open.fill" : "lock.fill",
-            iconColor: allPermissionsGranted ? .green : .orange,
-            title: "Permissions"
-        ) {
-            VStack(spacing: 10) {
-                HStack {
-                    Circle()
-                        .fill(accessibilityGranted ? .green : .orange)
-                        .frame(width: 8, height: 8)
-                    Text(accessibilityGranted ? "Accessibility granted" : "Accessibility required")
-                        .foregroundStyle(accessibilityGranted ? .green : .orange)
-                        .font(.callout.weight(.medium))
-                    Spacer()
-                    if !accessibilityGranted {
-                        Button("Grant Access") {
-                            AccessibilityChecker.requestPermission()
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                    }
-                }
+    private var permissionsCard: some View {
+        CompactCard(icon: "lock.shield", label: "Permissions") {
+            VStack(spacing: 0) {
+                permissionDotRow(
+                    label: "Accessibility",
+                    granted: accessibilityGranted
+                )
+                CompactDivider()
+                permissionDotRow(
+                    label: "Screen Recording",
+                    granted: screenRecordingGranted
+                )
+                CompactDivider()
 
-                if !allPermissionsGranted {
-                    Divider()
-
-                    Button {
-                        NotificationCenter.default.post(name: .showOnboarding, object: nil)
-                    } label: {
-                        Label("Setup Permissions", systemImage: "lock.shield")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .controlSize(.small)
+                Button {
+                    NotificationCenter.default.post(name: .showOnboarding, object: nil)
+                } label: {
+                    Label("Setup Permissions", systemImage: "lock.shield")
+                        .font(.system(size: 11, design: .monospaced))
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.bordered)
+                .tint(.indigo)
+                .controlSize(.small)
+                .padding(.top, 6)
             }
         }
+    }
+
+    private func permissionDotRow(label: String, granted: Bool) -> some View {
+        HStack(spacing: 7) {
+            Circle()
+                .fill(granted ? .green : .orange)
+                .frame(width: 7, height: 7)
+                .shadow(color: granted ? .green.opacity(0.6) : .orange.opacity(0.6), radius: 3)
+
+            Text(label)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            Text(granted ? "Granted" : "Required")
+                .font(.system(size: 10))
+                .foregroundStyle(granted ? .green : .orange)
+        }
+        .padding(.vertical, 3)
     }
 
     // MARK: - Footer
 
     private var footer: some View {
-        VStack(spacing: 2) {
-            Text("PasteJack v\(Constants.appVersion)")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-            Text("Made by Wolfgang Vieregg")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-        }
-        .padding(.vertical, 12)
+        Text("Made by Wolfgang Vieregg")
+            .font(.system(size: 10, design: .monospaced))
+            .foregroundStyle(.quaternary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
     }
 
     // MARK: - Polling
@@ -280,32 +265,92 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - Components
+// MARK: - Compact Card Components
 
-private struct SettingsCard<Content: View>: View {
+private struct CompactCard<Content: View>: View {
     let icon: String
-    let iconColor: Color
-    let title: String
+    let label: String
     @ViewBuilder let content: Content
 
+    init(icon: String, label: String, @ViewBuilder content: () -> Content) {
+        self.icon = icon
+        self.label = label
+        self.content = content()
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label {
-                Text(title)
-                    .font(.headline)
-            } icon: {
+        VStack(alignment: .leading, spacing: 0) {
+            // Section label
+            HStack(spacing: 6) {
                 Image(systemName: icon)
-                    .foregroundStyle(iconColor)
-                    .font(.body)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+
+                Text(label.uppercased())
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+                    .tracking(1.2)
             }
+            .padding(.bottom, 10)
 
             content
-                .padding(.leading, 4)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(.quaternary, lineWidth: 0.5)
+        )
+    }
+}
+
+private struct CompactRow<Content: View>: View {
+    let label: String
+    @ViewBuilder let trailing: Content
+
+    init(_ label: String, @ViewBuilder trailing: () -> Content) {
+        self.label = label
+        self.trailing = trailing()
+    }
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+            Spacer()
+            trailing
+        }
+        .padding(.vertical, 5)
+    }
+}
+
+private struct CompactToggleRow: View {
+    let label: String
+    @Binding var isOn: Bool
+
+    init(_ label: String, isOn: Binding<Bool>) {
+        self.label = label
+        self._isOn = isOn
+    }
+
+    var body: some View {
+        Toggle(label, isOn: $isOn)
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+            .toggleStyle(.switch)
+            .tint(.indigo)
+            .controlSize(.mini)
+            .padding(.vertical, 3)
+    }
+}
+
+private struct CompactDivider: View {
+    var body: some View {
+        Divider()
+            .padding(.vertical, 2)
     }
 }
 
@@ -313,17 +358,17 @@ private struct HotkeyBadge: View {
     let keys: [String]
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 3) {
             ForEach(keys, id: \.self) { key in
                 Text(key)
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .frame(minWidth: 26, minHeight: 26)
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .frame(minWidth: 22, minHeight: 22)
                     .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(.quaternary)
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(.quaternary.opacity(0.5))
                     )
                     .overlay(
-                        RoundedRectangle(cornerRadius: 6)
+                        RoundedRectangle(cornerRadius: 4)
                             .strokeBorder(.tertiary, lineWidth: 0.5)
                     )
             }

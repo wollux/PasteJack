@@ -81,11 +81,14 @@ private class SelectionView: NSView {
     private var currentRect: NSRect?
     private let onComplete: CompletionHandler
 
-    // Visual styling
+    // Visual styling — sky-blue (#38BDF8)
     private let overlayColor = NSColor.black.withAlphaComponent(0.3)
-    private let selectionStrokeColor = NSColor.systemBlue
-    private let selectionFillColor = NSColor.systemBlue.withAlphaComponent(0.1)
-    private let instructionText = "Drag to select a region. Press Esc to cancel."
+    private let selectionStrokeColor = NSColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+    private let selectionFillColor = NSColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.08)
+    private let handleColor = NSColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+    private let handleBorderColor = NSColor(red: 0.05, green: 0.65, blue: 0.89, alpha: 1.0)
+    private let handleSize: CGFloat = 9
+    private let instructionText = "Drag to select a region \u{00B7} Press Esc to cancel"
 
     init(frame: NSRect, onComplete: @escaping CompletionHandler) {
         self.onComplete = onComplete
@@ -110,67 +113,107 @@ private class SelectionView: NSView {
             NSColor.clear.setFill()
             rect.fill(using: .copy)
 
-            // Selection rectangle border
+            // Selection rectangle fill
             selectionFillColor.setFill()
             rect.fill()
 
-            let borderPath = NSBezierPath(roundedRect: rect, xRadius: 2, yRadius: 2)
+            // Selection rectangle border
+            let borderPath = NSBezierPath(roundedRect: rect, xRadius: 3, yRadius: 3)
             borderPath.lineWidth = 2
             selectionStrokeColor.setStroke()
             borderPath.stroke()
 
-            // Dimension label
+            // Corner handles
+            drawCornerHandles(for: rect)
+
+            // Dimension label above the selection
             drawDimensionLabel(for: rect)
         }
 
-        // Instruction text at top center
-        drawInstructionText()
+        // Instruction pill at bottom center
+        drawInstructionPill()
+    }
+
+    private func drawCornerHandles(for rect: NSRect) {
+        let half = handleSize / 2
+        let corners: [NSPoint] = [
+            NSPoint(x: rect.minX - half, y: rect.minY - half),     // bottom-left
+            NSPoint(x: rect.maxX - half, y: rect.minY - half),     // bottom-right
+            NSPoint(x: rect.minX - half, y: rect.maxY - half),     // top-left
+            NSPoint(x: rect.maxX - half, y: rect.maxY - half),     // top-right
+        ]
+
+        for corner in corners {
+            let handleRect = NSRect(x: corner.x, y: corner.y, width: handleSize, height: handleSize)
+            let handlePath = NSBezierPath(roundedRect: handleRect, xRadius: 2, yRadius: 2)
+
+            handleColor.setFill()
+            handlePath.fill()
+
+            handleBorderColor.setStroke()
+            handlePath.lineWidth = 1.5
+            handlePath.stroke()
+        }
     }
 
     private func drawDimensionLabel(for rect: NSRect) {
-        let text = "\(Int(rect.width)) × \(Int(rect.height))"
+        let text = "\(Int(rect.width)) \u{00D7} \(Int(rect.height))"
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .medium),
-            .foregroundColor: NSColor.white,
+            .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .medium),
+            .foregroundColor: NSColor.white.withAlphaComponent(0.8),
         ]
         let size = (text as NSString).size(withAttributes: attributes)
 
+        // Position above the selection rectangle
         let labelRect = NSRect(
-            x: rect.midX - size.width / 2 - 6,
-            y: rect.minY - size.height - 10,
-            width: size.width + 12,
-            height: size.height + 4
+            x: rect.midX - size.width / 2 - 8,
+            y: rect.maxY + 8,
+            width: size.width + 16,
+            height: size.height + 6
         )
 
         // Background pill
         let pillPath = NSBezierPath(roundedRect: labelRect, xRadius: 4, yRadius: 4)
-        NSColor.black.withAlphaComponent(0.7).setFill()
+        NSColor.black.withAlphaComponent(0.75).setFill()
         pillPath.fill()
 
+        // Border
+        NSColor.white.withAlphaComponent(0.1).setStroke()
+        pillPath.lineWidth = 1
+        pillPath.stroke()
+
         // Text
-        let textPoint = NSPoint(x: labelRect.origin.x + 6, y: labelRect.origin.y + 2)
+        let textPoint = NSPoint(x: labelRect.origin.x + 8, y: labelRect.origin.y + 3)
         (text as NSString).draw(at: textPoint, withAttributes: attributes)
     }
 
-    private func drawInstructionText() {
+    private func drawInstructionPill() {
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 16, weight: .medium),
-            .foregroundColor: NSColor.white,
+            .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .medium),
+            .foregroundColor: NSColor.white.withAlphaComponent(0.65),
         ]
         let size = (instructionText as NSString).size(withAttributes: attributes)
 
+        // Position at bottom center
         let bgRect = NSRect(
-            x: bounds.midX - size.width / 2 - 16,
-            y: bounds.maxY - 60,
-            width: size.width + 32,
-            height: size.height + 16
+            x: bounds.midX - size.width / 2 - 18,
+            y: 18,
+            width: size.width + 36,
+            height: size.height + 12
         )
 
-        let pillPath = NSBezierPath(roundedRect: bgRect, xRadius: 8, yRadius: 8)
-        NSColor.black.withAlphaComponent(0.6).setFill()
+        // Capsule background
+        let pillPath = NSBezierPath(roundedRect: bgRect, xRadius: bgRect.height / 2, yRadius: bgRect.height / 2)
+        NSColor.black.withAlphaComponent(0.7).setFill()
         pillPath.fill()
 
-        let textPoint = NSPoint(x: bgRect.origin.x + 16, y: bgRect.origin.y + 8)
+        // Border
+        NSColor.white.withAlphaComponent(0.1).setStroke()
+        pillPath.lineWidth = 1
+        pillPath.stroke()
+
+        // Text
+        let textPoint = NSPoint(x: bgRect.origin.x + 18, y: bgRect.origin.y + 6)
         (instructionText as NSString).draw(at: textPoint, withAttributes: attributes)
     }
 

@@ -29,101 +29,158 @@ struct OCRResultView: View {
         self.onDismiss = onDismiss
     }
 
+    private var lineCount: Int {
+        recognizedText.components(separatedBy: "\n").count
+    }
+
+    private var charCount: Int {
+        recognizedText.count
+    }
+
+    private var wordCount: Int {
+        recognizedText.split(whereSeparator: \.isWhitespace).count
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            gradientHeader
-            content
-            footerButtons
+            compactHeader
+            editorContent
+            statsGrid
+            actionBar
         }
-        .frame(width: 480, height: 420)
+        .frame(width: 620, height: 480)
         .background(Color(.windowBackgroundColor))
         .onDisappear { timer?.invalidate() }
     }
 
-    // MARK: - Header
+    // MARK: - Compact Header
 
-    private var gradientHeader: some View {
-        ZStack {
+    private var compactHeader: some View {
+        ZStack(alignment: .leading) {
             LinearGradient(
-                colors: [.teal, .cyan, .blue],
+                colors: [
+                    Color(red: 0.05, green: 0.58, blue: 0.55),  // #0D9488
+                    Color(red: 0.03, green: 0.57, blue: 0.70),  // #0891B2
+                    Color(red: 0.11, green: 0.31, blue: 0.85),  // #1D4ED8
+                ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
 
-            VStack(spacing: 8) {
+            VStack {
+                LinearGradient(
+                    colors: [.white.opacity(0.08), .clear],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 30)
+                Spacer()
+            }
+
+            HStack(spacing: 14) {
                 Image(systemName: "doc.text.viewfinder")
-                    .font(.system(size: 32, weight: .thin))
+                    .font(.system(size: 26, weight: .light))
                     .foregroundStyle(.white.opacity(0.9))
+                    .shadow(color: .black.opacity(0.3), radius: 6, y: 2)
 
-                Text("Text Captured")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-            }
-            .padding(.vertical, 16)
-        }
-        .frame(height: 100)
-        .clipShape(UnevenRoundedRectangle(
-            topLeadingRadius: 0,
-            bottomLeadingRadius: 20,
-            bottomTrailingRadius: 20,
-            topTrailingRadius: 0
-        ))
-    }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Text Captured")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
 
-    // MARK: - Content
-
-    private var content: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Text editor card
-            VStack(alignment: .leading, spacing: 8) {
-                Label("Recognized Text", systemImage: "text.quote")
-                    .font(.headline)
-
-                TextEditor(text: $recognizedText)
-                    .font(.system(.body, design: .monospaced))
-                    .scrollContentBackground(.hidden)
-                    .padding(8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color(.textBackgroundColor))
-                    )
-                    .frame(minHeight: 100, maxHeight: 180)
-                    .onChange(of: recognizedText) {
-                        isEditing = true
-                        copiedToClipboard = false
-                    }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
-
-            // Clipboard status
-            HStack(spacing: 6) {
-                if copiedToClipboard {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                    Text("Copied to clipboard")
-                        .foregroundStyle(.green)
-                        .font(.callout)
+                    Text("\(lineCount) line\(lineCount != 1 ? "s" : "") \u{00B7} \(charCount) chars \u{00B7} Apple Vision OCR")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.5))
                 }
 
                 Spacer()
             }
+            .padding(.horizontal, 20)
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 16)
+        .frame(height: 56)
     }
 
-    // MARK: - Footer
+    // MARK: - Editor Content
 
-    private var footerButtons: some View {
-        HStack(spacing: 12) {
-            Button("Try Again") {
+    private var editorContent: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                Image(systemName: "pencil")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                Text("EDIT TEXT")
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+                    .tracking(1.2)
+            }
+            .padding(.bottom, 8)
+
+            TextEditor(text: $recognizedText)
+                .font(.system(size: 13, design: .monospaced))
+                .scrollContentBackground(.hidden)
+                .padding(10)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(.textBackgroundColor))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .strokeBorder(.quaternary, lineWidth: 0.5)
+                        )
+                )
+                .frame(minHeight: 140, maxHeight: 200)
+                .onChange(of: recognizedText) {
+                    isEditing = true
+                    copiedToClipboard = false
+                }
+
+            // Char count + copy feedback
+            HStack {
+                Text("\(charCount) chars")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(.quaternary)
+
+                Spacer()
+
+                if copiedToClipboard {
+                    HStack(spacing: 5) {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 9, weight: .bold))
+                        Text("Copied")
+                            .font(.system(size: 11))
+                    }
+                    .foregroundStyle(.green)
+                    .transition(.opacity)
+                }
+            }
+            .padding(.top, 6)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 14)
+    }
+
+    // MARK: - Stats Grid
+
+    private var statsGrid: some View {
+        HStack(spacing: 6) {
+            StatBox(label: "Lines", value: "\(lineCount)")
+            StatBox(label: "Words", value: "\(wordCount)")
+            StatBox(label: "Chars", value: "\(charCount)")
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+    }
+
+    // MARK: - Action Bar
+
+    private var actionBar: some View {
+        HStack(spacing: 8) {
+            Button {
                 timer?.invalidate()
                 onTryAgain()
+            } label: {
+                Label("Try Again", systemImage: "arrow.counterclockwise")
             }
-            .controlSize(.large)
+            .controlSize(.regular)
 
             Spacer()
 
@@ -131,19 +188,20 @@ struct OCRResultView: View {
                 timer?.invalidate()
                 onDismiss()
             }
-            .controlSize(.large)
+            .controlSize(.regular)
 
             Button {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(recognizedText, forType: .string)
-                withAnimation(.easeInOut(duration: 0.3)) {
+                withAnimation(.easeInOut(duration: 0.2)) {
                     copiedToClipboard = true
                 }
             } label: {
-                Label("Copy", systemImage: "doc.on.doc")
+                Label(copiedToClipboard ? "Copied" : "Copy", systemImage: copiedToClipboard ? "checkmark" : "doc.on.doc")
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .buttonStyle(.bordered)
+            .tint(copiedToClipboard ? .green : nil)
+            .controlSize(.regular)
 
             Button {
                 timer?.invalidate()
@@ -153,10 +211,12 @@ struct OCRResultView: View {
             } label: {
                 Label("Type It", systemImage: "keyboard")
             }
-            .controlSize(.large)
+            .buttonStyle(.borderedProminent)
+            .tint(.indigo)
+            .controlSize(.regular)
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 16)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 
     // MARK: - Auto Close
@@ -173,5 +233,32 @@ struct OCRResultView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Stat Box
+
+private struct StatBox: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        VStack(spacing: 3) {
+            Text(value)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundStyle(.indigo)
+
+            Text(label.uppercased())
+                .font(.system(size: 9, weight: .medium, design: .monospaced))
+                .foregroundStyle(.quaternary)
+                .tracking(0.8)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 7)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(.quaternary, lineWidth: 0.5)
+        )
     }
 }

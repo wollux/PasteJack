@@ -13,6 +13,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var onboardingWindow: NSWindow?
     private var ocrResultWindow: NSWindow?
     private let screenSelection = ScreenSelectionOverlay()
+    private var popover: NSPopover?
+    private var eventMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Wrap bare executable in .app bundle for stable TCC permissions.
@@ -79,54 +81,56 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 systemSymbolName: StatusIndicator.symbolName(for: .idle),
                 accessibilityDescription: Constants.appName
             )
+            button.action = #selector(togglePopover)
+            button.target = self
         }
+    }
 
-        let menu = NSMenu()
+    // MARK: - Popover Menu
 
-        let pasteItem = NSMenuItem(
-            title: "Paste as Keystrokes (⌃⇧V)",
-            action: #selector(handleHotkey),
-            keyEquivalent: ""
+    @objc private func togglePopover() {
+        if let popover, popover.isShown {
+            closePopover()
+        } else {
+            showPopover()
+        }
+    }
+
+    private func showPopover() {
+        let menuView = MenuBarView(
+            session: session,
+            onPaste: { [weak self] in self?.handleHotkey() },
+            onOCR: { [weak self] in self?.handleOCRHotkey() },
+            onCancel: { [weak self] in self?.cancelTyping() },
+            onSettings: { [weak self] in self?.openSettings() },
+            onQuit: { NSApp.terminate(nil) },
+            dismissPopover: { [weak self] in self?.closePopover() }
         )
-        pasteItem.target = self
-        menu.addItem(pasteItem)
 
-        let ocrItem = NSMenuItem(
-            title: "Copy from Screen (⌃⇧C)",
-            action: #selector(handleOCRHotkey),
-            keyEquivalent: ""
-        )
-        ocrItem.target = self
-        menu.addItem(ocrItem)
+        let pop = NSPopover()
+        pop.contentSize = NSSize(width: 260, height: 1) // height auto-sizes
+        pop.behavior = .transient
+        pop.contentViewController = NSHostingController(rootView: menuView)
 
-        let cancelItem = NSMenuItem(
-            title: "Cancel Typing",
-            action: #selector(cancelTyping),
-            keyEquivalent: ""
-        )
-        cancelItem.target = self
-        menu.addItem(cancelItem)
+        if let button = statusItem.button {
+            pop.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        }
+        self.popover = pop
 
-        menu.addItem(NSMenuItem.separator())
+        // Close popover when clicking outside
+        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            self?.closePopover()
+        }
+    }
 
-        let settingsItem = NSMenuItem(
-            title: "Settings\u{2026}",
-            action: #selector(openSettings),
-            keyEquivalent: ","
-        )
-        settingsItem.target = self
-        menu.addItem(settingsItem)
+    private func closePopover() {
+        popover?.performClose(nil)
+        popover = nil
 
-        menu.addItem(NSMenuItem.separator())
-
-        menu.addItem(NSMenuItem(
-            title: "Quit PasteJack",
-            action: #selector(NSApplication.terminate(_:)),
-            keyEquivalent: "q"
-        ))
-
-        menu.delegate = self
-        statusItem.menu = menu
+        if let eventMonitor {
+            NSEvent.removeMonitor(eventMonitor)
+        }
+        eventMonitor = nil
     }
 
     // MARK: - Paste as Keystrokes
@@ -339,21 +343,4 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension Notification.Name {
     static let showOnboarding = Notification.Name("PasteJack.showOnboarding")
-}
-
-// MARK: - NSMenuDelegate
-
-extension AppDelegate: NSMenuDelegate {
-    func menuNeedsUpdate(_ menu: NSMenu) {
-        if let cancelItem = menu.items.first(where: { $0.action == #selector(cancelTyping) }) {
-            cancelItem.isHidden = !session.isActive
-        }
-        if let pasteItem = menu.items.first(where: { $0.action == #selector(handleHotkey) }) {
-            pasteItem.isEnabled = !session.isActive
-
-            if let preview = ClipboardReader.preview() {
-                pasteItem.toolTip = preview
-            }
-        }
-    }
 }
