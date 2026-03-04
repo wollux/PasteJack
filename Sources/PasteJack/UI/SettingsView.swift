@@ -11,9 +11,11 @@ struct SettingsView: View {
         VStack(spacing: 0) {
             compactHeader
             gridBody
+            Spacer(minLength: 0)
             footer
         }
-        .frame(width: 560, height: 540)
+        .ignoresSafeArea()
+        .frame(width: 560)
         .background(Color(.windowBackgroundColor))
         .onAppear { startPolling() }
         .onDisappear { stopPolling() }

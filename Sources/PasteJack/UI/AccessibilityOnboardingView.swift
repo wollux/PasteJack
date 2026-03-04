@@ -7,7 +7,6 @@ struct AccessibilityOnboardingView: View {
     @State private var pollTimer: Timer?
     @State private var pulseAnimation = false
     @State private var floatAnimation = false
-    @State private var autoDismissScheduled = false
     var onDismiss: (() -> Void)?
 
     private var allGranted: Bool {
@@ -22,10 +21,11 @@ struct AccessibilityOnboardingView: View {
         VStack(spacing: 0) {
             compactHeader
             bodyContent
-            Spacer(minLength: 0)
+            Spacer(minLength: 8)
             footerSection
         }
-        .frame(width: 520, height: 480)
+        .ignoresSafeArea()
+        .frame(width: 520)
         .background(Color(.windowBackgroundColor))
         .onAppear { startPolling() }
         .onDisappear { stopPolling() }
@@ -249,11 +249,7 @@ struct AccessibilityOnboardingView: View {
                     }
                 }
 
-                if accGranted && scrGranted && !autoDismissScheduled {
-                    autoDismissScheduled = true
-                    try? await Task.sleep(for: .seconds(1.5))
-                    dismiss()
-                }
+                // No auto-dismiss — user clicks "Get Started" manually
             }
         }
     }
