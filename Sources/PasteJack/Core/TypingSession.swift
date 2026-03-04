@@ -19,8 +19,17 @@ final class TypingSession: ObservableObject {
     private let engine = KeystrokeEngine()
     private var task: Task<Void, Never>?
 
+    /// The text that was typed in the last completed session (for history).
+    private(set) var lastTypedText: String?
+
     /// Start typing the given text with configurable delay per character.
-    func start(text: String, delayMicroseconds: UInt32, countdownSeconds: Int) {
+    func start(
+        text: String,
+        delayMicroseconds: UInt32,
+        countdownSeconds: Int,
+        adaptiveSpeed: Bool = false,
+        lineDelayMicroseconds: UInt32 = 0
+    ) {
         cancel()
 
         let characters = Array(text)
@@ -37,6 +46,8 @@ final class TypingSession: ObservableObject {
             }
 
             // Typing phase
+            var currentDelay = delayMicroseconds
+
             for (index, char) in characters.enumerated() {
                 if Task.isCancelled { self.state = .cancelled; return }
 
@@ -47,19 +58,40 @@ final class TypingSession: ObservableObject {
                 )
 
                 if let control = ControlCharMapping.map[char] {
-                    self.engine.typeControlCharacter(
-                        control.keyCode,
-                        modifiers: control.modifiers,
-                        delay: delayMicroseconds
-                    )
+                    if adaptiveSpeed {
+                        currentDelay = self.engine.typeControlCharacterAdaptive(
+                            control.keyCode,
+                            modifiers: control.modifiers,
+                            baseDelay: delayMicroseconds,
+                            currentDelay: currentDelay
+                        )
+                    } else {
+                        self.engine.typeControlCharacter(
+                            control.keyCode,
+                            modifiers: control.modifiers,
+                            delay: delayMicroseconds
+                        )
+                    }
+                    // Extra delay after newline
+                    if (char == "\n" || char == "\r") && lineDelayMicroseconds > 0 {
+                        usleep(lineDelayMicroseconds)
+                    }
                 } else if ControlCharMapping.isControlCharacter(char) {
-                    // Skip unknown control characters
                     continue
                 } else {
-                    self.engine.typeCharacter(char, delay: delayMicroseconds)
+                    if adaptiveSpeed {
+                        currentDelay = self.engine.typeCharacterAdaptive(
+                            char,
+                            baseDelay: delayMicroseconds,
+                            currentDelay: currentDelay
+                        )
+                    } else {
+                        self.engine.typeCharacter(char, delay: delayMicroseconds)
+                    }
                 }
             }
 
+            self.lastTypedText = text
             self.state = .completed
         }
     }

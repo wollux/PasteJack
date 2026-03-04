@@ -24,6 +24,10 @@ enum Constants {
     static let defaultHotkeyKeyCode: UInt32 = 9 // kVK_ANSI_V
     static let defaultHotkeyModifiers: UInt32 = 0x1000 | 0x0200 // controlKey | shiftKey
 
+    // Hotkey defaults — Selected Text Typing
+    static let defaultSelectedTextHotkeyKeyCode: UInt32 = 17 // kVK_ANSI_T
+    static let defaultSelectedTextHotkeyModifiers: UInt32 = 0x1000 | 0x0200 // controlKey | shiftKey
+
     // Hotkey defaults — OCR Copy from Screen
     static let defaultOCRHotkeyKeyCode: UInt32 = 8 // kVK_ANSI_C
     static let defaultOCRHotkeyModifiers: UInt32 = 0x1000 | 0x0200 // controlKey | shiftKey
@@ -32,4 +36,13 @@ enum Constants {
     static let defaultOCRAutoCloseSeconds: Int = 8
     static let minOCRAutoCloseSeconds: Int = 3
     static let maxOCRAutoCloseSeconds: Int = 15
+
+    // Adaptive speed
+    static let adaptiveSpeedMultiplier: Double = 1.5
+    static let adaptiveSpeedWindow: Int = 50
+
+    // Line delay
+    static let defaultLineDelayMs: Double = 0
+    static let maxLineDelayMs: Double = 2000
+    static let lineDelayStepMs: Double = 50
 }

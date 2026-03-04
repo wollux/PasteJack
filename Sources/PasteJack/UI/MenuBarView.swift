@@ -6,8 +6,11 @@ struct MenuBarView: View {
     @ObservedObject var session: TypingSession
     let onPaste: () -> Void
     let onOCR: () -> Void
+    let onSelectedText: () -> Void
+    let onMultiOCR: () -> Void
     let onCancel: () -> Void
     let onSettings: () -> Void
+    let onSnippets: () -> Void
     let onQuit: () -> Void
     let dismissPopover: () -> Void
 
@@ -19,7 +22,7 @@ struct MenuBarView: View {
             menuDivider
             actionItems
             menuDivider
-            settingsItem
+            snippetAndSettingsItems
             menuDivider
             quitItem
         }
@@ -141,6 +144,28 @@ struct MenuBarView: View {
                 onOCR()
             }
 
+            menuItem(
+                id: "selected",
+                icon: "text.cursor",
+                label: "Type Selected Text",
+                shortcut: "⌃⇧T",
+                disabled: session.isActive
+            ) {
+                dismissPopover()
+                onSelectedText()
+            }
+
+            menuItem(
+                id: "multi-ocr",
+                icon: "rectangle.stack",
+                label: "Multi-Region OCR",
+                shortcut: nil,
+                disabled: session.isActive
+            ) {
+                dismissPopover()
+                onMultiOCR()
+            }
+
             if session.isActive {
                 menuItem(
                     id: "cancel",
@@ -157,15 +182,27 @@ struct MenuBarView: View {
 
     // MARK: - Settings
 
-    private var settingsItem: some View {
-        menuItem(
-            id: "settings",
-            icon: "gearshape",
-            label: "Settings\u{2026}",
-            shortcut: "\u{2318},"
-        ) {
-            dismissPopover()
-            onSettings()
+    private var snippetAndSettingsItems: some View {
+        VStack(spacing: 0) {
+            menuItem(
+                id: "snippets",
+                icon: "doc.text",
+                label: "Snippet Library\u{2026}",
+                shortcut: nil
+            ) {
+                dismissPopover()
+                onSnippets()
+            }
+
+            menuItem(
+                id: "settings",
+                icon: "gearshape",
+                label: "Settings\u{2026}",
+                shortcut: "\u{2318},"
+            ) {
+                dismissPopover()
+                onSettings()
+            }
         }
     }
 

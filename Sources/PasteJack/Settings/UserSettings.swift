@@ -31,6 +31,63 @@ final class UserSettings: ObservableObject {
     /// Whether the user has completed the initial onboarding
     @AppStorage("hasSeenOnboarding") var hasSeenOnboarding: Bool = false
 
+    // MARK: - Adaptive Speed
+
+    /// Enable adaptive speed that slows down when target app can't keep up
+    @AppStorage("adaptiveSpeed") var adaptiveSpeed: Bool = false
+
+    // MARK: - Line Delay
+
+    /// Extra delay after newlines in milliseconds (0 = disabled)
+    @AppStorage("lineDelayMs") var lineDelayMs: Double = Constants.defaultLineDelayMs
+
+    /// Computed: line delay in microseconds for usleep()
+    var lineDelayMicroseconds: UInt32 {
+        UInt32(lineDelayMs * 1000)
+    }
+
+    // MARK: - Notifications
+
+    /// Show macOS notification when typing completes
+    @AppStorage("showNotification") var showNotification: Bool = true
+
+    // MARK: - Sensitive Detection
+
+    /// Warn when clipboard contains potential secrets
+    @AppStorage("sensitiveDetection") var sensitiveDetection: Bool = true
+
+    // MARK: - Appearance
+
+    /// Appearance mode: "system", "dark", "light"
+    @AppStorage("appearanceMode") var appearanceMode: String = "system"
+
+    // MARK: - Preview
+
+    /// Show preview window before typing
+    @AppStorage("showPreview") var showPreview: Bool = false
+
+    // MARK: - Custom Hotkeys
+
+    /// Paste hotkey key code (default: kVK_ANSI_V = 9)
+    @AppStorage("pasteHotkeyKeyCode") var pasteHotkeyKeyCode: Int = Int(Constants.defaultHotkeyKeyCode)
+    /// Paste hotkey modifiers
+    @AppStorage("pasteHotkeyModifiers") var pasteHotkeyModifiers: Int = Int(Constants.defaultHotkeyModifiers)
+
+    /// OCR hotkey key code (default: kVK_ANSI_C = 8)
+    @AppStorage("ocrHotkeyKeyCode") var ocrHotkeyKeyCode: Int = Int(Constants.defaultOCRHotkeyKeyCode)
+    /// OCR hotkey modifiers
+    @AppStorage("ocrHotkeyModifiers") var ocrHotkeyModifiers: Int = Int(Constants.defaultOCRHotkeyModifiers)
+
+    /// Selected text hotkey key code (default: kVK_ANSI_T = 17)
+    @AppStorage("selectedTextHotkeyKeyCode") var selectedTextHotkeyKeyCode: Int = Int(Constants.defaultSelectedTextHotkeyKeyCode)
+    /// Selected text hotkey modifiers
+    @AppStorage("selectedTextHotkeyModifiers") var selectedTextHotkeyModifiers: Int = Int(Constants.defaultSelectedTextHotkeyModifiers)
+
+    // MARK: - OCR Language
+
+    /// Preferred OCR language (empty = auto-detect)
+    @AppStorage("ocrPreferredLanguage") var ocrPreferredLanguage: String = ""
+
     // MARK: - OCR Settings
 
     /// Auto-close OCR result window

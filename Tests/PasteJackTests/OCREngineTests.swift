@@ -47,8 +47,8 @@ struct OCREngineTests {
         }
 
         let result = try await OCREngine.recognizeText(from: image)
-        #expect(result.contains("Hello"))
-        #expect(result.contains("World"))
+        #expect(result.text.contains("Hello"))
+        #expect(result.text.contains("World"))
     }
 
     @Test("Recognizes numbers from image")
@@ -59,8 +59,8 @@ struct OCREngineTests {
         }
 
         let result = try await OCREngine.recognizeText(from: image)
-        #expect(result.contains("192"))
-        #expect(result.contains("168"))
+        #expect(result.text.contains("192"))
+        #expect(result.text.contains("168"))
     }
 
     @Test("Throws noTextFound for blank image")

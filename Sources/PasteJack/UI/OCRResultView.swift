@@ -8,6 +8,7 @@ struct OCRResultView: View {
     @State private var timer: Timer?
     @State private var copiedToClipboard = false
 
+    let detectedLanguages: [String]
     let onTypeIt: (String) -> Void
     let onTryAgain: () -> Void
     let onDismiss: () -> Void
@@ -16,11 +17,13 @@ struct OCRResultView: View {
 
     init(
         text: String,
+        detectedLanguages: [String] = [],
         onTypeIt: @escaping (String) -> Void,
         onTryAgain: @escaping () -> Void,
         onDismiss: @escaping () -> Void
     ) {
         self._recognizedText = State(initialValue: text)
+        self.detectedLanguages = detectedLanguages
         let settings = UserSettings.shared
         self.autoCloseEnabled = settings.ocrAutoClose
         self._autoCloseRemaining = State(initialValue: settings.ocrAutoCloseSeconds)
@@ -94,6 +97,20 @@ struct OCRResultView: View {
                 }
 
                 Spacer()
+
+                // Language pills
+                if !detectedLanguages.isEmpty {
+                    HStack(spacing: 4) {
+                        ForEach(detectedLanguages.prefix(2), id: \.self) { lang in
+                            Text(lang)
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(Capsule().fill(.white.opacity(0.15)))
+                        }
+                    }
+                }
             }
             .padding(.horizontal, 20)
         }

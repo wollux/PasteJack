@@ -15,7 +15,7 @@ struct SettingsView: View {
             footer
         }
         .ignoresSafeArea()
-        .frame(width: 560)
+        .frame(width: 560, height: 580)
         .background(Color(.windowBackgroundColor))
         .onAppear { startPolling() }
         .onDisappear { stopPolling() }
@@ -70,23 +70,26 @@ struct SettingsView: View {
     // MARK: - 2-Column Grid Body
 
     private var gridBody: some View {
-        VStack(spacing: 0) {
-            // Top row: Typing + Behavior
-            HStack(alignment: .top, spacing: 10) {
-                typingCard
-                behaviorCard
-            }
+        ScrollView {
+            VStack(spacing: 0) {
+                // Top row: Typing + Behavior
+                HStack(alignment: .top, spacing: 10) {
+                    typingCard
+                    behaviorCard
+                }
 
-            Spacer().frame(height: 10)
+                Spacer().frame(height: 10)
 
-            // Bottom row: Hotkeys + Permissions
-            HStack(alignment: .top, spacing: 10) {
-                hotkeyCard
-                permissionsCard
+                // Bottom row: Hotkeys + Permissions
+                HStack(alignment: .top, spacing: 10) {
+                    hotkeyCard
+                    permissionsCard
+                }
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 14)
+            .padding(.bottom, 8)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 14)
     }
 
     // MARK: - Typing Card
@@ -100,6 +103,7 @@ struct SettingsView: View {
                         Text("Speed")
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
+                        InfoTip(text: "Delay between each keystroke. Lower = faster typing. Increase for slow targets like IPMI consoles.")
                         Spacer()
                         Text("\(Int(settings.keystrokeDelayMs))ms")
                             .font(.system(size: 12, design: .monospaced))
@@ -126,19 +130,61 @@ struct SettingsView: View {
 
                 CompactDivider()
 
-                CompactRow("Countdown") {
-                    Stepper(
-                        "\(settings.countdownSeconds)s",
-                        value: $settings.countdownSeconds,
-                        in: Constants.minCountdownSeconds...Constants.maxCountdownSeconds
-                    )
-                    .labelsHidden()
-                    .controlSize(.mini)
+                CompactRowWithInfo("Countdown", info: "Seconds to wait before typing starts. Gives you time to focus the target window.") {
+                    HStack(spacing: 6) {
+                        Text("\(settings.countdownSeconds)s")
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(.indigo)
+                        Stepper(
+                            "",
+                            value: $settings.countdownSeconds,
+                            in: Constants.minCountdownSeconds...Constants.maxCountdownSeconds
+                        )
+                        .labelsHidden()
+                        .controlSize(.mini)
+                    }
                 }
 
                 CompactDivider()
 
-                CompactRow("Max chars") {
+                CompactToggleRowWithInfo("Adaptive Speed", isOn: $settings.adaptiveSpeed, info: "Automatically slows down when the target app can't keep up with keystrokes.")
+
+                CompactDivider()
+
+                // Line delay slider
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Line Delay")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                        InfoTip(text: "Extra pause after each newline. Useful for terminals and IPMI consoles that need time to process a line.")
+                        Spacer()
+                        Text(settings.lineDelayMs == 0 ? "Off" : "\(Int(settings.lineDelayMs))ms")
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(.indigo)
+                    }
+
+                    Slider(
+                        value: $settings.lineDelayMs,
+                        in: 0...Constants.maxLineDelayMs,
+                        step: Constants.lineDelayStepMs
+                    )
+                    .tint(.indigo)
+
+                    HStack {
+                        Text("Off")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.quaternary)
+                        Spacer()
+                        Text("2000ms")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.quaternary)
+                    }
+                }
+
+                CompactDivider()
+
+                CompactRowWithInfo("Max chars", info: "Safety limit to prevent accidentally typing very long text. Default: 10,000 characters.") {
                     Text("\(settings.maxCharacters.formatted())")
                         .font(.system(size: 12, design: .monospaced))
                         .foregroundStyle(.primary.opacity(0.8))
@@ -152,13 +198,31 @@ struct SettingsView: View {
     private var behaviorCard: some View {
         CompactCard(icon: "bolt", label: "Behavior") {
             VStack(spacing: 0) {
-                CompactToggleRow("Launch at Login", isOn: $settings.launchAtLogin)
+                CompactToggleRowWithInfo("Launch at Login", isOn: $settings.launchAtLogin, info: "Start PasteJack automatically when you log in.")
                 CompactDivider()
-                CompactToggleRow("Play sound", isOn: $settings.playSoundOnComplete)
+                CompactToggleRowWithInfo("Play sound", isOn: $settings.playSoundOnComplete, info: "Play a sound when typing is complete.")
                 CompactDivider()
-                CompactToggleRow("Show progress", isOn: $settings.showProgress)
+                CompactToggleRowWithInfo("Show progress", isOn: $settings.showProgress, info: "Update the menu bar icon to show typing progress.")
                 CompactDivider()
-                CompactToggleRow("Auto-close OCR", isOn: $settings.ocrAutoClose)
+                CompactToggleRowWithInfo("Auto-close OCR", isOn: $settings.ocrAutoClose, info: "Automatically close the OCR result window after a few seconds.")
+                CompactDivider()
+                CompactToggleRowWithInfo("Notifications", isOn: $settings.showNotification, info: "Show a macOS notification when typing completes.")
+                CompactDivider()
+                CompactToggleRowWithInfo("Sensitive warn", isOn: $settings.sensitiveDetection, info: "Warn before typing if clipboard contains API keys, passwords, or tokens.")
+                CompactDivider()
+                CompactToggleRowWithInfo("Typing preview", isOn: $settings.showPreview, info: "Show a preview window with text stats before typing starts.")
+
+                CompactDivider()
+
+                CompactRowWithInfo("Appearance", info: "Override the system appearance for PasteJack windows.") {
+                    Picker("", selection: $settings.appearanceMode) {
+                        Text("System").tag("system")
+                        Text("Dark").tag("dark")
+                        Text("Light").tag("light")
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 150)
+                }
             }
         }
     }
@@ -168,13 +232,48 @@ struct SettingsView: View {
     private var hotkeyCard: some View {
         CompactCard(icon: "command", label: "Hotkeys") {
             VStack(spacing: 0) {
-                CompactRow("Paste as Keystrokes") {
-                    HotkeyBadge(keys: ["⌃", "⇧", "V"])
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Paste as Keystrokes")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                    HotkeyRecorderView(
+                        keyCode: $settings.pasteHotkeyKeyCode,
+                        modifiers: $settings.pasteHotkeyModifiers,
+                        defaultKeyCode: Int(Constants.defaultHotkeyKeyCode),
+                        defaultModifiers: Int(Constants.defaultHotkeyModifiers)
+                    )
                 }
+                .padding(.vertical, 3)
+
                 CompactDivider()
-                CompactRow("Copy from Screen") {
-                    HotkeyBadge(keys: ["⌃", "⇧", "C"])
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Copy from Screen")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                    HotkeyRecorderView(
+                        keyCode: $settings.ocrHotkeyKeyCode,
+                        modifiers: $settings.ocrHotkeyModifiers,
+                        defaultKeyCode: Int(Constants.defaultOCRHotkeyKeyCode),
+                        defaultModifiers: Int(Constants.defaultOCRHotkeyModifiers)
+                    )
                 }
+                .padding(.vertical, 3)
+
+                CompactDivider()
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Type Selected Text")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                    HotkeyRecorderView(
+                        keyCode: $settings.selectedTextHotkeyKeyCode,
+                        modifiers: $settings.selectedTextHotkeyModifiers,
+                        defaultKeyCode: Int(Constants.defaultSelectedTextHotkeyKeyCode),
+                        defaultModifiers: Int(Constants.defaultSelectedTextHotkeyModifiers)
+                    )
+                }
+                .padding(.vertical, 3)
             }
         }
     }
@@ -238,8 +337,8 @@ struct SettingsView: View {
 
     private var footer: some View {
         Text("Made by Wolfgang Vieregg")
-            .font(.system(size: 10, design: .monospaced))
-            .foregroundStyle(.quaternary)
+            .font(.system(size: 12, weight: .medium, design: .monospaced))
+            .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
     }
@@ -329,6 +428,58 @@ private struct CompactRow<Content: View>: View {
     }
 }
 
+private struct CompactRowWithInfo<Content: View>: View {
+    let label: String
+    let info: String
+    @ViewBuilder let trailing: Content
+
+    init(_ label: String, info: String, @ViewBuilder trailing: () -> Content) {
+        self.label = label
+        self.info = info
+        self.trailing = trailing()
+    }
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+            InfoTip(text: info)
+            Spacer()
+            trailing
+        }
+        .padding(.vertical, 5)
+    }
+}
+
+private struct CompactToggleRowWithInfo: View {
+    let label: String
+    @Binding var isOn: Bool
+    let info: String
+
+    init(_ label: String, isOn: Binding<Bool>, info: String) {
+        self.label = label
+        self._isOn = isOn
+        self.info = info
+    }
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+            InfoTip(text: info)
+            Spacer()
+            Toggle("", isOn: $isOn)
+                .toggleStyle(.switch)
+                .tint(.indigo)
+                .controlSize(.mini)
+                .labelsHidden()
+        }
+        .padding(.vertical, 3)
+    }
+}
+
 private struct CompactToggleRow: View {
     let label: String
     @Binding var isOn: Bool
@@ -353,6 +504,30 @@ private struct CompactDivider: View {
     var body: some View {
         Divider()
             .padding(.vertical, 2)
+    }
+}
+
+private struct InfoTip: View {
+    let text: String
+    @State private var isShowing = false
+
+    var body: some View {
+        Button {
+            isShowing.toggle()
+        } label: {
+            Image(systemName: "info.circle")
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $isShowing, arrowEdge: .trailing) {
+            Text(text)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .padding(10)
+                .frame(maxWidth: 220)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 

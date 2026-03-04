@@ -67,6 +67,12 @@ final class HotkeyManager {
         RegisterEventHotKey(keyCode, modifiers, carbonID, GetApplicationEventTarget(), 0, &hotKeyRef)
     }
 
+    /// Re-register the hotkey with new key code and modifiers, keeping the same handler.
+    func reregister(keyCode: UInt32, modifiers: UInt32) {
+        guard let handler else { return }
+        register(keyCode: keyCode, modifiers: modifiers, handler: handler)
+    }
+
     func unregister() {
         if let ref = hotKeyRef {
             UnregisterEventHotKey(ref)
