@@ -1,6 +1,6 @@
 cask "pastejack" do
-  version "0.8.1"
-  sha256 "d7c7d38a97f372c8072c77030c38d4ba9eefeb01dae216b3288bcdec147cff34"
+  version "0.9.0"
+  sha256 "957cd9c83dd6494fd33fb8b19982c9c77b41626b7e1c3ce12600d2f8d3b4b626"
 
   url "https://github.com/wollux/PasteJack/releases/download/v#{version}/PasteJack-#{version}.dmg"
   name "PasteJack"
