@@ -16,6 +16,7 @@ struct MenuBarView: View {
     let onTypingHistory: () -> Void
     let onOCRHistory: () -> Void
 
+    @ObservedObject private var settings = UserSettings.shared
     @State private var hoveredItem: String?
 
     var body: some View {
@@ -25,6 +26,8 @@ struct MenuBarView: View {
             actionItems
             menuDivider
             historyAndSnippetItems
+            menuDivider
+            usageStats
             menuDivider
             quitItem
         }
@@ -226,6 +229,35 @@ struct MenuBarView: View {
                 onSettings()
             }
         }
+    }
+
+    // MARK: - Usage Stats
+
+    private var usageStats: some View {
+        HStack(spacing: 12) {
+            statBadge(icon: "keyboard", value: settings.totalPasteCount)
+            statBadge(icon: "doc.text.viewfinder", value: settings.totalOCRCount)
+            statBadge(icon: "character.cursor.ibeam", value: settings.totalCharsTyped)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+    }
+
+    private func statBadge(icon: String, value: Int) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+            Text(Self.formatCount(value))
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private static func formatCount(_ n: Int) -> String {
+        if n >= 1_000_000 { return String(format: "%.1fM", Double(n) / 1_000_000) }
+        if n >= 1_000 { return String(format: "%.1fk", Double(n) / 1_000) }
+        return "\(n)"
     }
 
     // MARK: - Quit

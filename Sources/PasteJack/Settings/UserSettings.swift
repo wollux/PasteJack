@@ -110,6 +110,15 @@ final class UserSettings: ObservableObject {
     /// Date string for the current day's usage counter (yyyy-MM-dd)
     @AppStorage("dailyUseDate") var dailyUseDate: String = ""
 
+    /// Total lifetime paste-as-keystrokes uses
+    @AppStorage("totalPasteCount") var totalPasteCount: Int = 0
+
+    /// Total lifetime OCR uses
+    @AppStorage("totalOCRCount") var totalOCRCount: Int = 0
+
+    /// Total lifetime characters typed
+    @AppStorage("totalCharsTyped") var totalCharsTyped: Int = 0
+
     /// Computed: delay in microseconds for usleep()
     var delayMicroseconds: UInt32 {
         UInt32(keystrokeDelayMs * 1000)

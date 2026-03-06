@@ -395,6 +395,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         guard !text.isEmpty else { return }
 
+        UserSettings.shared.totalOCRCount += 1
+        UserSettings.shared.totalCharsTyped += text.count
         LicenseManager.shared.recordUsage()
         Task {
             try? await Task.sleep(for: .seconds(1))
@@ -680,6 +682,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             if let typedText = session.lastTypedText {
                 TypingHistory.shared.add(text: typedText)
+                settings.totalPasteCount += 1
+                settings.totalCharsTyped += typedText.count
             }
             LicenseManager.shared.recordUsage()
             Task {

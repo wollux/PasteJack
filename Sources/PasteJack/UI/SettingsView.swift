@@ -472,11 +472,29 @@ struct SettingsView: View {
     // MARK: - Footer
 
     private var footer: some View {
-        Text("Made by Wolfgang Vieregg")
-            .font(.system(size: 12, weight: .medium, design: .monospaced))
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
+        VStack(spacing: 6) {
+            HStack(spacing: 16) {
+                footerStat(icon: "keyboard", label: "Pastes", value: settings.totalPasteCount)
+                footerStat(icon: "doc.text.viewfinder", label: "OCRs", value: settings.totalOCRCount)
+                footerStat(icon: "character.cursor.ibeam", label: "Chars", value: settings.totalCharsTyped)
+            }
+            Text("Made by Wolfgang Vieregg")
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .foregroundStyle(.quaternary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+    }
+
+    private func footerStat(icon: String, label: String, value: Int) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+            Text("\(value.formatted()) \(label)")
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundStyle(.tertiary)
+        }
     }
 
     // MARK: - Polling
