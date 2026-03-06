@@ -72,20 +72,21 @@ struct SettingsView: View {
     // MARK: - 2-Column Grid Body
 
     private var gridBody: some View {
-        VStack(spacing: 8) {
-            // Top row: Typing + Behavior
-            HStack(alignment: .top, spacing: 8) {
+        Grid(horizontalSpacing: 8, verticalSpacing: 8) {
+            GridRow {
                 typingCard
+                    .frame(maxHeight: .infinity, alignment: .top)
                 behaviorCard
+                    .frame(maxHeight: .infinity, alignment: .top)
             }
-
-            // Bottom row: Hotkeys + Permissions & License
-            HStack(alignment: .top, spacing: 8) {
+            GridRow {
                 hotkeyCard
+                    .frame(maxHeight: .infinity, alignment: .top)
                 VStack(spacing: 8) {
                     permissionsCard
                     licenseCard
                 }
+                .frame(maxHeight: .infinity, alignment: .top)
             }
         }
         .padding(.horizontal, 14)
