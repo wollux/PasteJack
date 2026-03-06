@@ -17,7 +17,7 @@ struct SettingsView: View {
             footer
         }
         .ignoresSafeArea()
-        .frame(width: 560, height: 640)
+        .frame(width: 672, height: 768)
         .background(Color(.windowBackgroundColor))
         .onAppear { startPolling() }
         .onDisappear { stopPolling() }
@@ -72,29 +72,25 @@ struct SettingsView: View {
     // MARK: - 2-Column Grid Body
 
     private var gridBody: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                // Top row: Typing + Behavior
-                HStack(alignment: .top, spacing: 10) {
-                    typingCard
-                    behaviorCard
-                }
+        VStack(spacing: 8) {
+            // Top row: Typing + Behavior
+            HStack(alignment: .top, spacing: 8) {
+                typingCard
+                behaviorCard
+            }
 
-                Spacer().frame(height: 10)
-
-                // Bottom row: Hotkeys + Permissions & License
-                HStack(alignment: .top, spacing: 10) {
-                    hotkeyCard
-                    VStack(spacing: 10) {
-                        permissionsCard
-                        licenseCard
-                    }
+            // Bottom row: Hotkeys + Permissions & License
+            HStack(alignment: .top, spacing: 8) {
+                hotkeyCard
+                VStack(spacing: 8) {
+                    permissionsCard
+                    licenseCard
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 14)
-            .padding(.bottom, 8)
         }
+        .padding(.horizontal, 14)
+        .padding(.top, 10)
+        .padding(.bottom, 6)
     }
 
     // MARK: - Typing Card
