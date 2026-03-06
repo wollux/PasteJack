@@ -7,7 +7,7 @@ VERSION="${VERSION#v}"
 DMG_FILE=".build/${APP_NAME}-${VERSION}.dmg"
 APPLE_ID="${APPLE_ID:-wollux@rootwatch.org}"
 TEAM_ID="${TEAM_ID:-YS8R2WK948}"
-APP_PASSWORD="${AC_PASSWORD:-@keychain:AC_PASSWORD}"
+APP_PASSWORD="${AC_PASSWORD:-$(security find-generic-password -s "AC_PASSWORD" -a "${APPLE_ID}" -w)}"
 
 echo "==> Submitting ${DMG_FILE} for notarization..."
 
