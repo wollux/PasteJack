@@ -335,13 +335,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func startOCRSelection() {
-        screenSelection.show { [weak self] rect in
-            guard let self, let rect else { return }
-
-            Task { @MainActor in
-                await self.performOCR(on: rect)
-            }
-        }
+        startMultiRegionOCR()
     }
 
     private func startMultiRegionOCR() {
