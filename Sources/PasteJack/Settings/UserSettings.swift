@@ -96,6 +96,20 @@ final class UserSettings: ObservableObject {
     /// Seconds before OCR result window auto-closes
     @AppStorage("ocrAutoCloseSeconds") var ocrAutoCloseSeconds: Int = Constants.defaultOCRAutoCloseSeconds
 
+    // MARK: - License
+
+    /// License key entered by the user
+    @AppStorage("licenseKey") var licenseKey: String = ""
+
+    /// Whether the license has been validated successfully
+    @AppStorage("licenseValid") var licenseValid: Bool = false
+
+    /// Number of uses today
+    @AppStorage("dailyUseCount") var dailyUseCount: Int = 0
+
+    /// Date string for the current day's usage counter (yyyy-MM-dd)
+    @AppStorage("dailyUseDate") var dailyUseDate: String = ""
+
     /// Computed: delay in microseconds for usleep()
     var delayMicroseconds: UInt32 {
         UInt32(keystrokeDelayMs * 1000)

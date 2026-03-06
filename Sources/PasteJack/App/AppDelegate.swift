@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var typingOverlayWindow: NSWindow?
     private var previewWindow: NSWindow?
     private let screenSelection = ScreenSelectionOverlay()
+    private var nagWindow: NSWindow?
     private var popover: NSPopover?
     private var eventMonitor: Any?
     private var escapeMonitor: Any?
@@ -394,6 +395,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         guard !text.isEmpty else { return }
 
+        LicenseManager.shared.recordUsage()
+        Task {
+            try? await Task.sleep(for: .seconds(1))
+            if LicenseManager.shared.shouldShowNag() {
+                showSupportNag()
+            }
+        }
+
         let window = NSWindow(
             contentRect: .zero,
             styleMask: [.titled, .closable, .fullSizeContentView],
@@ -549,6 +558,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.ocrHistoryWindow = window
     }
 
+    // MARK: - Support Nag
+
+    private func showSupportNag() {
+        guard nagWindow?.isVisible != true else { return }
+
+        let window = NSWindow(
+            contentRect: .zero,
+            styleMask: [.titled, .closable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.title = "PasteJack"
+        window.contentView = NSHostingView(
+            rootView: SupportNagView(onDismiss: { [weak self] in
+                self?.nagWindow?.close()
+            })
+        )
+        window.center()
+        window.isReleasedWhenClosed = false
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        self.nagWindow = window
+    }
+
     // MARK: - Settings & Onboarding Windows
 
     @objc private func openSettings() {
@@ -645,6 +680,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             if let typedText = session.lastTypedText {
                 TypingHistory.shared.add(text: typedText)
+            }
+            LicenseManager.shared.recordUsage()
+            Task {
+                try? await Task.sleep(for: .seconds(1))
+                if LicenseManager.shared.shouldShowNag() {
+                    showSupportNag()
+                }
             }
             Task {
                 try? await Task.sleep(for: .seconds(2))

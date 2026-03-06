@@ -1,0 +1,1904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PasteJack — Paste anywhere. Even where you can't.</title>
+  <meta name="description" content="A native macOS utility that types your clipboard as keystrokes. Bypass paste-blocking in IPMI consoles, RDP sessions, VMs, and web forms.">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta property="og:title" content="PasteJack — Paste anywhere. Even where you can't.">
+  <meta property="og:description" content="Native macOS menu bar utility that simulates keyboard input from your clipboard. Works in IPMI, iLO, iDRAC, RDP, VMs, and paste-blocked forms.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://pastejack.app">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0a0a0a;
+      --bg-card: #111113;
+      --bg-card-hover: #18181b;
+      --border: #222225;
+      --border-subtle: #1a1a1d;
+      --text: #fafafa;
+      --text-secondary: #a0a0a8;
+      --text-tertiary: #64646c;
+      --accent: #f97316;
+      --accent-dim: rgba(249, 115, 22, 0.12);
+      --green: #22c55e;
+      --green-dim: rgba(34, 197, 94, 0.12);
+      --red: #ef4444;
+      --red-dim: rgba(239, 68, 68, 0.12);
+      --blue: #3b82f6;
+      --blue-dim: rgba(59, 130, 246, 0.12);
+      --yellow: #eab308;
+      --yellow-dim: rgba(234, 179, 8, 0.12);
+      --purple: #a855f7;
+      --purple-dim: rgba(168, 85, 247, 0.12);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 16px 24px;
+      background: rgba(10, 10, 10, 0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .nav-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      background: var(--accent);
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--text);
+      color: var(--bg);
+    }
+
+    .btn-primary:hover {
+      background: #e4e4e7;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-card);
+      border-color: var(--text-tertiary);
+    }
+
+    .btn-accent {
+      background: var(--accent);
+      color: #fff;
+      font-size: 16px;
+      padding: 14px 28px;
+      border-radius: var(--radius);
+    }
+
+    .btn-accent:hover {
+      background: #ea670c;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 32px rgba(249, 115, 22, 0.25);
+    }
+
+    /* ── HERO ── */
+    .hero {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 160px 24px 100px;
+      text-align: center;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 100px;
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 32px;
+      border: 1px solid rgba(249, 115, 22, 0.2);
+    }
+
+    .hero h1 {
+      font-size: clamp(40px, 6vw, 64px);
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 20px;
+    }
+
+    .hero h1 span {
+      background: linear-gradient(135deg, var(--accent), #fb923c);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: 18px;
+      color: var(--text-secondary);
+      max-width: 560px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .hero-meta {
+      font-size: 13px;
+      color: var(--text-tertiary);
+    }
+
+    /* ── TERMINAL DEMO ── */
+    .terminal-wrap {
+      max-width: 640px;
+      margin: 64px auto 0;
+    }
+
+    .terminal {
+      background: #111113;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+    }
+
+    .terminal-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: #18181b;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .terminal-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .terminal-dot.red { background: #ef4444; }
+    .terminal-dot.yellow { background: #eab308; }
+    .terminal-dot.green { background: #22c55e; }
+
+    .terminal-title {
+      flex: 1;
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-tertiary);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .terminal-body {
+      padding: 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13.5px;
+      line-height: 1.8;
+    }
+
+    .terminal-line { margin-bottom: 4px; }
+    .t-prompt { color: var(--green); }
+    .t-cmd { color: var(--text); }
+    .t-comment { color: var(--text-tertiary); }
+    .t-output { color: var(--text-secondary); }
+    .t-accent { color: var(--accent); }
+
+    .cursor {
+      display: inline-block;
+      width: 8px;
+      height: 16px;
+      background: var(--accent);
+      vertical-align: text-bottom;
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    /* ── SECTION ── */
+    section {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 100px 24px;
+    }
+
+    .section-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 48px;
+    }
+
+    /* ── PROBLEM ── */
+    .problem-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .problem-card {
+      padding: 24px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      transition: all 0.2s;
+    }
+
+    .problem-card:hover {
+      border-color: var(--text-tertiary);
+      background: var(--bg-card-hover);
+    }
+
+    .problem-icon {
+      font-size: 24px;
+      margin-bottom: 14px;
+    }
+
+    .problem-card h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .problem-card p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* ── HOW IT WORKS ── */
+    .how-flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      flex-wrap: wrap;
+      margin-bottom: 56px;
+      padding: 40px 0;
+    }
+
+    .how-step {
+      text-align: center;
+      padding: 0 20px;
+    }
+
+    .how-step-num {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px;
+      border: 1px solid rgba(249, 115, 22, 0.2);
+    }
+
+    .how-step h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .how-step p {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .how-arrow {
+      color: var(--text-tertiary);
+      font-size: 20px;
+      padding: 0 4px;
+    }
+
+    /* ── FEATURES ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    .feature-card {
+      padding: 28px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      transition: all 0.2s;
+    }
+
+    .feature-card:hover {
+      border-color: var(--text-tertiary);
+      background: var(--bg-card-hover);
+    }
+
+    .feature-tag {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 16px;
+    }
+
+    .tag-core { background: var(--accent-dim); color: var(--accent); }
+    .tag-ocr { background: var(--blue-dim); color: var(--blue); }
+    .tag-security { background: var(--green-dim); color: var(--green); }
+
+    .feature-card h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* ── SPEED TABLE ── */
+    .speed-table-wrap {
+      max-width: 640px;
+      margin: 0 auto;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .speed-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .speed-table th {
+      padding: 14px 20px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-tertiary);
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .speed-table td {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+    }
+
+    .speed-table tr:last-child td { border-bottom: none; }
+
+    .speed-table td:first-child {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .speed-table code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--accent);
+    }
+
+    /* ── PRIVACY BANNER ── */
+    .privacy-banner {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    .privacy-inner {
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      padding: 48px;
+      display: flex;
+      align-items: center;
+      gap: 40px;
+    }
+
+    .privacy-icon {
+      font-size: 48px;
+      flex-shrink: 0;
+    }
+
+    .privacy-inner h2 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .privacy-inner p {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+
+    .privacy-badges {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .privacy-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 100px;
+      background: var(--green-dim);
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid rgba(34, 197, 94, 0.15);
+    }
+
+    /* ── INSTALL ── */
+    .install-options {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .install-card {
+      padding: 32px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+    }
+
+    .install-card h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .install-card .install-desc {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      margin-bottom: 20px;
+    }
+
+    .code-block {
+      background: #0a0a0a;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13.5px;
+      color: var(--text-secondary);
+      overflow-x: auto;
+      position: relative;
+    }
+
+    .code-block .copy-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 12px;
+      color: var(--text-tertiary);
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.2s;
+    }
+
+    .code-block .copy-btn:hover {
+      color: var(--text);
+      border-color: var(--text-tertiary);
+    }
+
+    /* ── CTA ── */
+    .cta {
+      text-align: center;
+      padding: 100px 24px 120px;
+    }
+
+    .cta h2 {
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+
+    .cta p {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: var(--text-tertiary);
+    }
+
+    footer a {
+      color: var(--text-tertiary);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    footer a:hover { color: var(--text-secondary); }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+    }
+
+    /* ── TEST CONSOLE SECTION ── */
+    #test-console {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 100px 24px;
+    }
+
+    #test-console .score-bar {
+      position: sticky;
+      top: 60px;
+      z-index: 99;
+      background: rgba(10, 10, 10, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+      margin: 0 -24px 20px -24px;
+      padding: 0 24px;
+    }
+
+    #test-console .score-inner {
+      padding: 12px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    #test-console .score-pills { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    #test-console .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    #test-console .pill-r { background: var(--red-dim); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+    #test-console .pill-g { background: var(--green-dim); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
+    #test-console .pill-o { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(249,115,22,0.2); }
+
+    #test-console .score-big {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    #test-console .reset-btn {
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-tertiary);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    #test-console .reset-btn:hover { border-color: var(--red); color: var(--red); }
+
+    #test-console .section-divider {
+      padding: 40px 0 16px;
+      margin-top: 20px;
+    }
+
+    #test-console .section-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 5px 14px;
+      border-radius: 100px;
+      background: transparent;
+      color: inherit;
+    }
+
+    #test-console .label-paste { background: var(--red-dim); color: var(--red); }
+    #test-console .label-copy { background: var(--purple-dim); color: var(--purple); }
+    #test-console .label-select { background: var(--blue-dim); color: var(--blue); }
+    #test-console .label-edge { background: var(--yellow-dim); color: var(--yellow); }
+
+    #test-console .section-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-top: 12px;
+      letter-spacing: -0.01em;
+      margin-bottom: 12px;
+    }
+
+    #test-console .section-sub {
+      font-size: 14px;
+      color: var(--text-tertiary);
+      margin-top: 4px;
+    }
+
+    #test-console .grid {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 16px 0;
+    }
+
+    #test-console .card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-card);
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    #test-console .card.passed { border-color: rgba(34, 197, 94, 0.3); }
+    #test-console .card.failed { border-color: rgba(239, 68, 68, 0.3); }
+
+    #test-console .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    #test-console .card-title { display: flex; align-items: center; gap: 10px; }
+
+    #test-console .card-num {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #test-console .num-paste { background: var(--red-dim); color: var(--red); }
+    #test-console .num-copy { background: var(--purple-dim); color: var(--purple); }
+    #test-console .num-select { background: var(--blue-dim); color: var(--blue); }
+    #test-console .num-edge { background: var(--yellow-dim); color: var(--yellow); }
+
+    #test-console .card-title h2 { font-size: 14px; font-weight: 600; }
+
+    #test-console .badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 100px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    #test-console .b-blocked { background: var(--red-dim); color: var(--red); }
+    #test-console .b-sanitize { background: var(--blue-dim); color: var(--blue); }
+    #test-console .b-noselect { background: var(--purple-dim); color: var(--purple); }
+    #test-console .b-nocopy { background: var(--purple-dim); color: var(--purple); }
+    #test-console .b-edge { background: var(--yellow-dim); color: var(--yellow); }
+
+    #test-console .card-desc {
+      padding: 10px 20px;
+      font-size: 12px;
+      color: var(--text-tertiary);
+      border-bottom: 1px solid var(--border);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    #test-console .card-body { padding: 16px 20px; }
+
+    #test-console .field {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--text);
+      display: block;
+      width: 100%;
+      padding: 12px 14px;
+      background: #0a0a0a;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      outline: none;
+      resize: vertical;
+      transition: border-color 0.2s;
+    }
+
+    #test-console .field:focus { border-color: var(--accent); }
+    #test-console .field::placeholder { color: var(--text-tertiary); }
+
+    #test-console .form-row { display: flex; gap: 12px; margin-bottom: 12px; }
+    #test-console .form-col { flex: 1; }
+    #test-console .form-label { font-size: 11px; font-weight: 600; color: var(--text-tertiary); margin-bottom: 4px; display: block; text-transform: uppercase; letter-spacing: 0.04em; }
+
+    #test-console .term {
+      background: #0a0a0a;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+
+    #test-console .term-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 14px;
+      background: #18181b;
+      border-bottom: 1px solid var(--border);
+    }
+
+    #test-console .dot { width: 10px; height: 10px; border-radius: 50%; }
+    #test-console .dot-r { background: #ef4444; }
+    #test-console .dot-y { background: #eab308; }
+    #test-console .dot-g { background: #22c55e; }
+
+    #test-console .term-title {
+      flex: 1;
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-tertiary);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    #test-console .term-input {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--green);
+      background: transparent;
+      border: none;
+      outline: none;
+      width: 100%;
+      padding: 14px;
+    }
+
+    #test-console .term-input::placeholder { color: #2a4a2a; }
+
+    #test-console .term-area {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--green);
+      background: transparent;
+      border: none;
+      outline: none;
+      width: 100%;
+      padding: 14px;
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    #test-console .term-area::placeholder { color: #2a4a2a; }
+
+    #test-console .source-box {
+      background: #0d0d10;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--text-secondary);
+      position: relative;
+    }
+
+    #test-console .source-box .watermark {
+      position: absolute;
+      top: 8px;
+      right: 12px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    #test-console .wm-noselect { background: var(--purple-dim); color: var(--purple); }
+    #test-console .wm-nocopy { background: var(--red-dim); color: var(--red); }
+
+    #test-console .log {
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      min-height: 24px;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #test-console .log-idle { background: transparent; color: var(--text-tertiary); }
+    #test-console .log-blocked { background: var(--red-dim); color: var(--red); }
+    #test-console .log-pass { background: var(--green-dim); color: var(--green); }
+    #test-console .log-warn { background: var(--yellow-dim); color: var(--yellow); }
+
+    #test-console .expect {
+      margin-top: 10px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: #0d0d0f;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    #test-console .expect-text {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    #test-console .expect-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-tertiary);
+      margin-bottom: 4px;
+    }
+
+    #test-console .expect-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--accent);
+      word-break: break-all;
+      line-height: 1.5;
+    }
+
+    #test-console .btn-row { display: flex; gap: 8px; align-items: flex-start; padding-top: 2px; }
+
+    #test-console .vbtn {
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    #test-console .vbtn:hover { border-color: var(--text-tertiary); color: var(--text); }
+
+    #test-console .vbtn-copy {
+      background: var(--accent-dim);
+      color: var(--accent);
+      border-color: rgba(249,115,22,0.2);
+    }
+
+    #test-console .vbtn-copy:hover { background: rgba(249,115,22,0.2); }
+
+    #test-console .instructions {
+      margin-top: 10px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      background: rgba(249, 115, 22, 0.06);
+      border: 1px solid rgba(249, 115, 22, 0.1);
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    #test-console .instructions strong { color: var(--accent); font-weight: 600; }
+
+    #test-console canvas {
+      width: 100%;
+      max-width: 600px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      display: block;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+      .how-arrow { display: none; }
+      .how-flow { flex-direction: column; gap: 24px; }
+      .privacy-inner { flex-direction: column; text-align: center; padding: 32px 24px; }
+      .privacy-badges { justify-content: center; }
+      footer { flex-direction: column; gap: 16px; text-align: center; }
+      #test-console .form-row { flex-direction: column; }
+      #test-console .score-inner { justify-content: center; }
+      #test-console .expect { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <div class="logo">
+      <div class="logo-icon">⌨</div>
+      PasteJack
+    </div>
+    <ul class="nav-links">
+      <li><a href="#problem">Problem</a></li>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#try-it">Try It</a></li>
+      <li><a href="#install">Install</a></li>
+      <li><a href="https://github.com/wollux/PasteJack" target="_blank">GitHub</a></li>
+    </ul>
+    <a href="#install" class="btn btn-primary">Download</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">macOS Menu Bar App</div>
+  <h1>Paste anywhere.<br><span>Even where you can't.</span></h1>
+  <p class="hero-sub">PasteJack types your clipboard character by character as simulated keystrokes — bypassing paste-blocking in IPMI consoles, RDP sessions, VMs, and web forms.</p>
+  <div class="hero-actions">
+    <a href="#install" class="btn btn-accent">Download for macOS</a>
+    <a href="https://github.com/wollux/PasteJack" class="btn btn-secondary" target="_blank">View Source</a>
+  </div>
+  <p class="hero-meta">macOS 14+ &middot; Apple Silicon & Intel &middot; 100% Offline &middot; Free</p>
+
+  <div class="terminal-wrap">
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="terminal-dot red"></div>
+        <div class="terminal-dot yellow"></div>
+        <div class="terminal-dot green"></div>
+        <div class="terminal-title">IPMI Console — server-rack-07</div>
+      </div>
+      <div class="terminal-body">
+        <div class="terminal-line"><span class="t-comment"># Paste blocked? No problem.</span></div>
+        <div class="terminal-line"><span class="t-prompt">$</span> <span class="t-cmd">brew tap wollux/tap</span></div>
+        <div class="terminal-line"><span class="t-prompt">$</span> <span class="t-cmd">brew install --cask pastejack</span></div>
+        <div class="terminal-line"><span class="t-output">==> Installing pastejack</span></div>
+        <div class="terminal-line"><span class="t-output">==> </span><span class="t-accent">PasteJack was successfully installed!</span></div>
+        <div class="terminal-line">&nbsp;</div>
+        <div class="terminal-line"><span class="t-comment"># Copy text, press ⌃⇧V, done.</span></div>
+        <div class="terminal-line"><span class="t-prompt">$</span> <span class="cursor"></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROBLEM -->
+<section id="problem">
+  <p class="section-label">The Problem</p>
+  <h2 class="section-title">Paste doesn't work everywhere.</h2>
+  <div class="problem-grid">
+    <div class="problem-card">
+      <div class="problem-icon">🖥</div>
+      <h3>IPMI / iLO / iDRAC</h3>
+      <p>Web-based server consoles have no clipboard support. Typing a 64-character SSH key by hand is not an option.</p>
+    </div>
+    <div class="problem-card">
+      <div class="problem-icon">🪟</div>
+      <h3>RDP Sessions</h3>
+      <p>Remote Desktop without clipboard redirection silently blocks paste. You stare at the screen, nothing happens.</p>
+    </div>
+    <div class="problem-card">
+      <div class="problem-icon">📦</div>
+      <h3>VMs without Guest Tools</h3>
+      <p>Fresh VM installs can't share the host clipboard. You need the password to install the tools, but you can't paste the password.</p>
+    </div>
+    <div class="problem-card">
+      <div class="problem-icon">🌐</div>
+      <h3>Paste-Blocked Web Forms</h3>
+      <p>Banking sites, corporate portals, and "security-conscious" forms that intercept paste events with JavaScript.</p>
+    </div>
+    <div class="problem-card">
+      <div class="problem-icon">🔒</div>
+      <h3>Secure Terminals</h3>
+      <p>Compliance environments that disable paste in terminal emulators. Security through inconvenience.</p>
+    </div>
+    <div class="problem-card">
+      <div class="problem-icon">🎯</div>
+      <h3>Any Keyboard Layout</h3>
+      <p>Unicode injection means PasteJack works with US, German, French — any layout. No keymap headaches.</p>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <p class="section-label">How it works</p>
+  <h2 class="section-title">Three keystrokes. That's it.</h2>
+  <div class="how-flow">
+    <div class="how-step">
+      <div class="how-step-num">1</div>
+      <h3>Copy</h3>
+      <p>⌘C as usual</p>
+    </div>
+    <div class="how-arrow">→</div>
+    <div class="how-step">
+      <div class="how-step-num">2</div>
+      <h3>Focus target</h3>
+      <p>Click the blocked window</p>
+    </div>
+    <div class="how-arrow">→</div>
+    <div class="how-step">
+      <div class="how-step-num">3</div>
+      <h3>⌃⇧V</h3>
+      <p>PasteJack types it for you</p>
+    </div>
+  </div>
+
+  <p class="section-label" style="text-align:center">Recommended Speeds</p>
+  <div class="speed-table-wrap">
+    <table class="speed-table">
+      <thead>
+        <tr>
+          <th>Target</th>
+          <th>Keystroke Delay</th>
+          <th>Line Delay</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Local apps</td>
+          <td><code>5–20ms</code></td>
+          <td><code>0ms</code></td>
+        </tr>
+        <tr>
+          <td>RDP (LAN)</td>
+          <td><code>20–30ms</code></td>
+          <td><code>0ms</code></td>
+        </tr>
+        <tr>
+          <td>RDP (WAN/VPN)</td>
+          <td><code>30–50ms</code></td>
+          <td><code>50–100ms</code></td>
+        </tr>
+        <tr>
+          <td>IPMI / iLO / iDRAC</td>
+          <td><code>50–100ms</code></td>
+          <td><code>200–500ms</code></td>
+        </tr>
+        <tr>
+          <td>Very slow consoles</td>
+          <td><code>100–200ms</code></td>
+          <td><code>500–2000ms</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <p class="section-label">Features</p>
+  <h2 class="section-title">Everything you need. Nothing you don't.</h2>
+  <div class="features-grid">
+    <div class="feature-card">
+      <span class="feature-tag tag-core">Core</span>
+      <h3>Paste as Keystrokes</h3>
+      <p>Types clipboard contents via CGEvent with configurable speed (5–200ms), adaptive throttling, and a countdown timer so you can focus the target window.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-tag tag-ocr">OCR</span>
+      <h3>Copy from Screen</h3>
+      <p>Select any screen region, extract text with Apple Vision — fully on-device. Multi-region support, language detection, editable results.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-tag tag-core">Core</span>
+      <h3>Type Selected Text</h3>
+      <p>Grab the current text selection and type it into another window. Perfect for transferring text between paste-blocked contexts.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-tag tag-core">Core</span>
+      <h3>Snippet Library</h3>
+      <p>Save, search, and organize frequently-typed text. Type any snippet with one click — ideal for commands, configs, and credentials you use daily.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-tag tag-security">Security</span>
+      <h3>Sensitive Content Detection</h3>
+      <p>Warns before typing API keys, private keys, JWT tokens, AWS credentials, or high-entropy strings. Never accidentally leak secrets.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-tag tag-core">Core</span>
+      <h3>Progress Overlay</h3>
+      <p>Floating HUD shows real-time progress, character count, and Escape-to-cancel hint. macOS notification when typing finishes.</p>
+    </div>
+  </div>
+</section>
+
+<!-- PRIVACY -->
+<div class="privacy-banner">
+  <div class="privacy-inner">
+    <div class="privacy-icon">🔐</div>
+    <div>
+      <h2>100% offline. Zero telemetry.</h2>
+      <p>PasteJack never connects to the internet. No analytics, no tracking, no cloud services. Your clipboard data never leaves your Mac. Built with pure Apple frameworks — zero external dependencies.</p>
+      <div class="privacy-badges">
+        <span class="privacy-badge">✓ No network calls</span>
+        <span class="privacy-badge">✓ No telemetry</span>
+        <span class="privacy-badge">✓ No dependencies</span>
+        <span class="privacy-badge">✓ Apple notarized</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TRY IT TEST CONSOLE -->
+<section id="try-it">
+  <p class="section-label">Try It Out</p>
+  <h2 class="section-title">Test PasteJack Against Real Blocks</h2>
+  <p style="color: var(--text-secondary); font-size: 15px; max-width: 680px; line-height: 1.7;">
+    11 real-world scenarios testing paste-blocking, copy-blocking, selection-blocking, multiline, and edge cases. Use PasteJack's features (⌃⇧V paste, ⌃⇧C OCR, ⌃⇧T type-selected) to beat each test.
+  </p>
+</section>
+
+<!-- STICKY SCORE -->
+<div id="test-console">
+  <div class="score-bar">
+    <div class="score-inner">
+      <div class="score-pills">
+        <span class="pill pill-r" id="s-blocked">0 blocked</span>
+        <span class="pill pill-g" id="s-passed">0 / 11 passed</span>
+      </div>
+      <div class="score-big" id="s-big">0 / 11</div>
+      <button class="reset-btn" onclick="resetAll()">Reset All</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- SECTION A: PASTE BLOCKING              -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="section-divider">
+    <span class="section-label label-paste">Section A</span>
+    <h2 class="section-title">Paste Blocking</h2>
+    <p class="section-sub">Target blocks Cmd+V — use PasteJack ⌃⇧V to type clipboard as keystrokes</p>
+  </div>
+
+  <div class="grid">
+
+    <!-- T1 -->
+    <div class="card" id="card1">
+      <div class="card-head">
+        <div class="card-title"><div class="card-num num-paste">1</div><h2>Basic preventDefault()</h2></div>
+        <span class="badge b-blocked">paste blocked</span>
+      </div>
+      <div class="card-desc">The most common paste-blocking method on the web</div>
+      <div class="card-body">
+        <input class="field" id="t1" type="text" placeholder="Try Cmd+V here..." autocomplete="off" spellcheck="false">
+        <div class="log log-idle" id="l1">Waiting...</div>
+        <div class="expect">
+          <div class="expect-text">
+            <div class="expect-label">Expected</div>
+            <div class="expect-val">HelloPasteJack2026!</div>
+          </div>
+          <div class="btn-row">
+            <button class="vbtn vbtn-copy" onclick="copyExpected('HelloPasteJack2026!')">Copy</button>
+            <button class="vbtn" onclick="verify(1,'HelloPasteJack2026!')">Verify</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- T2 -->
+    <div class="card" id="card2">
+      <div class="card-head">
+        <div class="card-title"><div class="card-num num-paste">2</div><h2>Paste + Drop + Right-Click Blocked</h2></div>
+        <span class="badge b-blocked">all input blocked</span>
+      </div>
+      <div class="card-desc">Aggressive banking-site style — every input vector intercepted</div>
+      <div class="card-body">
+        <input class="field" id="t2" type="text" placeholder="Everything is blocked..." autocomplete="off" spellcheck="false">
+        <div class="log log-idle" id="l2">Waiting...</div>
+        <div class="expect">
+          <div class="expect-text">
+            <div class="expect-label">Expected</div>
+            <div class="expect-val">sk-proj-abc123def456ghi789</div>
+          </div>
+          <div class="btn-row">
+            <button class="vbtn vbtn-copy" onclick="copyExpected('sk-proj-abc123def456ghi789')">Copy</button>
+            <button class="vbtn" onclick="verify(2,'sk-proj-abc123def456ghi789')">Verify</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- T3 -->
+    <div class="card" id="card3">
+      <div class="card-head">
+        <div class="card-title"><div class="card-num num-paste">3</div><h2>Password Field — Paste Blocked</h2></div>
+        <span class="badge b-blocked">password locked</span>
+      </div>
+      <div class="card-desc">Corporate login — paste disabled on password. Tests PasteJack with hidden characters.</div>
+      <div class="card-body">
+        <div class="form-row">
+          <div class="form-col">
+            <label class="form-label">Username</label>
+            <input class="field" type="text" value="admin@rack07.internal" readonly style="color:var(--text-tertiary)">
+          </div>
+          <div class="form-col">
+            <label class="form-label">Password (blocked)</label>
+            <input class="field" id="t3" type="password" placeholder="Paste blocked..." autocomplete="off">
+          </div>
+        </div>
+        <div class="log log-idle" id="l3">Waiting...</div>
+        <div class="expect">
+          <div class="expect-text">
+            <div class="expect-label">Expected Password</div>
+            <div class="expect-val">X#9kL!mP@2wQ&amp;zR$</div>
+          </div>
+          <div class="btn-row">
+            <button class="vbtn vbtn-copy" onclick="copyExpected('X#9kL!mP@2wQ&zR$')">Copy</button>
+            <button class="vbtn" onclick="verify(3,'X#9kL!mP@2wQ&zR$')">Verify</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- T4 -->
+    <div class="card" id="card4">
+      <div class="card-head">
+        <div class="card-title"><div class="card-num num-paste">4</div><h2>IPMI Console Simulator</h2></div>
+        <span class="badge b-blocked">ipmi</span>
+      </div>
+      <div class="card-desc">Supermicro IPMI HTML5 KVM — paste, drop, right-click, keyboard shortcuts all intercepted</div>
+      <div class="card-body">
+        <div class="term">
+          <div class="term-bar">
+            <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+            <div class="term-title">IPMI KVM — 10.0.1.42 — server-rack-07</div>
+          </div>
+          <input class="term-input" id="t4" type="text" placeholder="root@server-rack-07:~# " autocomplete="off" spellcheck="false">
+        </div>
+        <div class="log log-idle" id="l4">Waiting...</div>
+        <div class="expect">
+          <div class="expect-text">
+            <div class="expect-label">Expected Command</div>
+            <div class="expect-val">curl -fsSL https://get.docker.com | sh && systemctl enable docker</div>
+          </div>
+          <div class="btn-row">
+            <button class="vbtn vbtn-copy" onclick="copyExpected('curl -fsSL https://get.docker.com | sh && systemctl enable docker')">Copy</button>
+            <button class="vbtn" onclick="verify(4,'curl -fsSL https://get.docker.com | sh && systemctl enable docker')">Verify</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- T5 -->
+    <div class="card" id="card5">
+      <div class="card-head">
+        <div class="card-title"><div class="card-num num-paste">5</div><h2>Multiline — Config File in nano</h2></div>
+        <span class="badge b-blocked">paste blocked</span>
+      </div>
+      <div class="card-desc">Multi-line config block with newlines, special chars, indentation — tests line delay and Return key handling</div>
+      <div class="card-body">
+        <div class="term">
+          <div class="term-bar">
+            <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+            <div class="term-title">nano /etc/docker/daemon.json</div>
+          </div>
+          <textarea class="term-area" id="t5" rows="8" placeholder="Paste config block here..." spellcheck="false" autocomplete="off" style="min-height:160px"></textarea>
+        </div>
+        <div class="log log-idle" id="l5">Waiting...</div>
+        <div class="expect">
+          <div class="expect-text">
+            <div class="expect-label">Expected (6 lines, with braces and special chars)</div>
+            <div class="expect-val" style="white-space:pre;line-height:1.6">{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  }
+}</div>
+          </div>
+          <div class="btn-row">
+            <button class="vbtn vbtn-copy" id="copy5">Copy</button>
+            <button class="vbtn" id="verify5">Verify</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- SECTION B: COPY / SELECTION BLOCKING   -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="section-divider">
+    <span class="section-label label-copy">Section B</span>
+    <h2 class="section-title">Copy & Selection Blocking</h2>
+    <p class="section-sub">Source text can't be selected or copied — use PasteJack OCR (⌃⇧C) to grab it from screen</p>
+  </div>
+
+  <div class="grid">
+
+    <!-- T6 -->
+    <div class="card" id="card6">
+      <div class="card-head">
+        <div class="card-title"><div class="card-num num-copy">6</div><h2>Text Selection Disabled</h2></div>
+        <span class="badge b-noselect">no select</span>
+      </div>
+      <div class="card-desc">user-select: none + selectstart blocked — can't highlight text. Use OCR (⌃⇧C) to extract.</div>
+      <div class="card-body">
+        <div class="source-box" id="source6" style="user-select:none;-webkit-user-select:none;-moz-user-select:none;">
+          <span class="watermark wm-noselect">NO SELECT</span>
+          Server IP: 10.0.1.42<br>
+          Gateway: 10.0.1.1<br>
+          Netmask: 255.255.255.0<br>
+          DNS: 1.1.1.1, 8.8.8.8
+        </div>
+        <div class="instructions">
+          <strong>How to test:</strong> Try selecting the text above — you can't. Use PasteJack OCR (⌃⇧C), draw a box around it, then paste the result into the field below.
+        </div>
+        <input class="field" id="t6" type="text" placeholder="Paste the Server IP here (e.g. 10.0.1.42)..." style="margin-top:10px" autocomplete="off" spellcheck="false">
+        <div class="log log-idle" id="l6">Waiting...</div>
+        <div class="expect">
+          <div class="expect-text">
+            <div class="expect-label">Expected (just the IP)</div>
+            <div class="expect-val">10.0.1.42</div>
+          </div>
+          <div class="btn-row">
+            <button class="vbtn" onclick="verify(6,'10.0.1.42')">Verify</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- T7 -->
+    <div class="card" id="card7">
+      <div class="card-head">
+        <div class="card-title"><div class="card-num num-copy">7</div><h2>Copy Event Blocked</h2></div>
+        <span class="badge b-nocopy">no copy</span>
+      </div>
+      <div class="card-desc">Text is selectable but Cmd+C is intercepted and clipboard is overwritten with a warning. Use OCR.</div>
+      <div class="card-body">
+        <div class="source-box" id="source7">
+          <span class="watermark wm-nocopy">NO COPY</span>
+          DB_HOST=prod-db-01.internal<br>
+          DB_PORT=5432<br>
+          DB_NAME=app_production<br>
+          DB_USER=deploy_svc
+        </div>
+        <div class="instructions">
+          <strong>How to test:</strong> Try selecting and copying (Cmd+C) — it will paste a warning instead. Use PasteJack OCR (⌃⇧C) to grab DB_HOST value and paste it below.
+        </div>
+        <input class="field" id="t7" type="text" placeholder="Paste DB_HOST value here..." style="margin-top:10px" autocomplete="off" spellcheck="false">
+        <div class="log log-idle" id="l7">Waiting...</div>
+        <div class="expect">
+          <div class="expect-text">
+            <div class="expect-label">Expected</div>
+            <div class="expect-val">prod-db-01.internal</div>
+          </div>
+          <div class="btn-row">
+            <button class="vbtn" onclick="verify(7,'prod-db-01.internal')">Verify</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- T8 -->
+    <div class="card" id="card8">
+      <div class="card-head">
+        <div class="card-title"><div class="card-num num-copy">8</div><h2>Image-Based Text (Canvas Render)</h2></div>
+        <span class="badge b-noselect">image only</span>
+      </div>
+      <div class="card-desc">Text rendered as a canvas image — no DOM text at all. Only OCR can extract it.</div>
+      <div class="card-body">
+        <canvas id="canvas8" width="600" height="100"></canvas>
+        <div class="instructions">
+          <strong>How to test:</strong> This is a rendered image, not text. Use PasteJack OCR (⌃⇧C) to read the API endpoint, then type or paste it below.
+        </div>
+        <input class="field" id="t8" type="text" placeholder="Type the API endpoint here..." style="margin-top:10px" autocomplete="off" spellcheck="false">
+        <div class="log log-idle" id="l8">Waiting...</div>
+        <div class="expect">
+          <div class="expect-text">
+            <div class="expect-label">Expected</div>
+            <div class="expect-val">https://api.internal/v2/deploy?token=xK9mW3pL</div>
+          </div>
+          <div class="btn-row">
+            <button class="vbtn" onclick="verify(8,'https://api.internal/v2/deploy?token=xK9mW3pL')">Verify</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- SECTION C: EDGE CASES                  -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="section-divider">
+    <span class="section-label label-edge">Section C</span>
+    <h2 class="section-title">Edge Cases</h2>
+    <p class="section-sub">Unicode, sanitizers, and tricky character sets</p>
+  </div>
+
+  <div class="grid">
+
+    <!-- T9 -->
+    <div class="card" id="card9">
+      <div class="card-head">
+        <div class="card-title"><div class="card-num num-edge">9</div><h2>Input Sanitizer</h2></div>
+        <span class="badge b-sanitize">strips chars</span>
+      </div>
+      <div class="card-desc">Paste allowed but special characters are stripped on the paste event. PasteJack keystrokes bypass it.</div>
+      <div class="card-body">
+        <textarea class="field" id="t9" rows="2" placeholder="Try pasting a shell command..." autocomplete="off" spellcheck="false"></textarea>
+        <div class="log log-idle" id="l9">Waiting...</div>
+        <div class="expect">
+          <div class="expect-text">
+            <div class="expect-label">Expected (with all special chars intact)</div>
+            <div class="expect-val">echo "Hello $USER" | grep -E '^[A-Z]' &amp;&amp; exit 0</div>
+          </div>
+          <div class="btn-row">
+            <button class="vbtn vbtn-copy" onclick="copyExpected('echo \"Hello $USER\" | grep -E \x27^[A-Z]\x27 && exit 0')">Copy</button>
+            <button class="vbtn" onclick="verify(9, 'echo \"Hello $USER\" | grep -E \x27^[A-Z]\x27 && exit 0')">Verify</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- T10 -->
+    <div class="card" id="card10">
+      <div class="card-head">
+        <div class="card-title"><div class="card-num num-edge">10</div><h2>Unicode — Umlauts, Symbols, Brackets</h2></div>
+        <span class="badge b-blocked">paste blocked</span>
+      </div>
+      <div class="card-desc">Characters that break keycode-based typing: Umlauts, curly braces, pipes, tilde, backslash</div>
+      <div class="card-body">
+        <input class="field" id="t10" type="text" placeholder="Try pasting Unicode..." autocomplete="off" spellcheck="false">
+        <div class="log log-idle" id="l10">Waiting...</div>
+        <div class="expect">
+          <div class="expect-text">
+            <div class="expect-label">Expected</div>
+            <div class="expect-val">&Uuml;ber: m&uuml;nchen@r&ouml;twatch.org | {key: "v&auml;lue"} ~\$HOME</div>
+          </div>
+          <div class="btn-row">
+            <button class="vbtn vbtn-copy" onclick="copyExpected('\u00dcber: m\u00fcnchen@r\u00f6twatch.org | {key: &quot;v\u00e4lue&quot;} ~\\$HOME')">Copy</button>
+            <button class="vbtn" onclick="verify(10, '\u00dcber: m\u00fcnchen@r\u00f6twatch.org | {key: &quot;v\u00e4lue&quot;} ~\\$HOME')">Verify</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- T11 -->
+    <div class="card" id="card11">
+      <div class="card-head">
+        <div class="card-title"><div class="card-num num-edge">11</div><h2>Multiline — Shell Script Block</h2></div>
+        <span class="badge b-blocked">paste blocked</span>
+      </div>
+      <div class="card-desc">Multi-line bash script with indentation, variables, pipes, and special chars — stress test for line-by-line typing</div>
+      <div class="card-body">
+        <div class="term">
+          <div class="term-bar">
+            <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+            <div class="term-title">vi /usr/local/bin/health-check.sh</div>
+          </div>
+          <textarea class="term-area" id="t11" rows="10" placeholder="Paste script here..." spellcheck="false" autocomplete="off" style="min-height:200px"></textarea>
+        </div>
+        <div class="log log-idle" id="l11">Waiting...</div>
+        <div class="expect">
+          <div class="expect-text">
+            <div class="expect-label">Expected (7 lines bash script)</div>
+            <div class="expect-val" style="white-space:pre;line-height:1.6">#!/bin/bash
+HOST="${1:-localhost}"
+PORT="${2:-443}"
+RESULT=$(curl -sk "https://${HOST}:${PORT}/health" | jq -r '.status')
+if [ "$RESULT" = "ok" ]; then
+  echo "[OK] ${HOST}:${PORT} is healthy"
+fi</div>
+          </div>
+          <div class="btn-row">
+            <button class="vbtn vbtn-copy" id="copy11">Copy</button>
+            <button class="vbtn" id="verify11">Verify</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- INSTALL -->
+<section id="install">
+  <p class="section-label">Install</p>
+  <h2 class="section-title">Up and running in 30 seconds.</h2>
+  <div class="install-options">
+    <div class="install-card">
+      <h3>Homebrew</h3>
+      <p class="install-desc">Recommended — auto-updates included</p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        brew tap wollux/tap<br>brew install --cask pastejack
+      </div>
+    </div>
+    <div class="install-card">
+      <h3>Direct Download</h3>
+      <p class="install-desc">Notarized DMG from GitHub Releases</p>
+      <div style="margin-top:8px">
+        <a href="https://github.com/wollux/PasteJack/releases/latest" class="btn btn-secondary" target="_blank" style="width:100%;justify-content:center;">Download .dmg from GitHub</a>
+      </div>
+    </div>
+    <div class="install-card">
+      <h3>Support Development</h3>
+      <p class="install-desc">Remove the daily reminder &mdash; $9 one-time</p>
+      <div style="margin-top:8px">
+        <a href="https://YOURSTORE.lemonsqueezy.com/checkout/buy/PRODUCT_ID" class="btn btn-accent" target="_blank" style="width:100%;justify-content:center;">Buy License &mdash; $9</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <h2>Stop typing by hand.</h2>
+  <p>Life's too short to retype SSH keys into IPMI consoles.</p>
+  <p style="font-size:0.95rem;opacity:0.7;margin-top:0.5rem;">PasteJack is free to use. A license removes the reminder and supports development.</p>
+  <a href="#install" class="btn btn-accent">Download PasteJack</a>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <span>&copy; 2026 Wolfgang Vieregg</span>
+  <div class="footer-links">
+    <a href="https://github.com/wollux/PasteJack" target="_blank">GitHub</a>
+    <a href="https://rootwatch.org" target="_blank">rootwatch.org</a>
+  </div>
+</footer>
+
+<script>
+  // ── LANDING PAGE COPY FUNCTION ──
+  function copyCode(btn) {
+    const text = btn.parentElement.textContent.replace('Copy', '').trim();
+    navigator.clipboard.writeText(text);
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  }
+
+  // ── TEST CONSOLE VARIABLES ──
+  const TOTAL = 11;
+  let blockedCount = 0;
+  const results = {};
+
+  // Multiline expected values
+  const MULTILINE_5 = '{\n  "log-driver": "json-file",\n  "log-opts": {\n    "max-size": "10m",\n    "max-file": "3"\n  }\n}';
+  const MULTILINE_11 = '#!/bin/bash\nHOST="${1:-localhost}"\nPORT="${2:-443}"\nRESULT=$(curl -sk "https://${HOST}:${PORT}/health" | jq -r \'.status\')\nif [ "$RESULT" = "ok" ]; then\n  echo "[OK] ${HOST}:${PORT} is healthy"\nfi';
+
+  // ── HELPERS ──
+  function updateLog(id, msg, type) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.textContent = msg;
+      el.className = 'log log-' + type;
+    }
+  }
+
+  function updateScore() {
+    const passedCount = Object.keys(results).length;
+    document.getElementById('s-blocked').textContent = blockedCount + ' blocked';
+    document.getElementById('s-passed').textContent = passedCount + ' / ' + TOTAL + ' passed';
+    document.getElementById('s-big').textContent = passedCount + ' / ' + TOTAL;
+  }
+
+  function markCard(num, pass) {
+    const card = document.getElementById('card' + num);
+    if (card) {
+      card.classList.remove('passed', 'failed');
+      card.classList.add(pass ? 'passed' : 'failed');
+    }
+  }
+
+  function copyExpected(text) {
+    navigator.clipboard.writeText(text);
+  }
+
+  function blocked(logId, msg) {
+    blockedCount++;
+    updateLog(logId, 'BLOCKED: ' + msg, 'blocked');
+    updateScore();
+  }
+
+  function verify(num, expected) {
+    const el = document.getElementById('t' + num);
+    const val = el.value;
+    const logId = 'l' + num;
+
+    if (val === expected) {
+      updateLog(logId, 'PASS (' + val.length + ' chars match)', 'pass');
+      results[num] = true;
+      markCard(num, true);
+    } else if (val.length === 0) {
+      updateLog(logId, 'EMPTY — no content yet', 'blocked');
+    } else {
+      // find first diff position
+      let diffPos = -1;
+      for (let i = 0; i < Math.max(val.length, expected.length); i++) {
+        if (val[i] !== expected[i]) { diffPos = i; break; }
+      }
+      const got = val[diffPos] ? '"' + val[diffPos] + '" (0x' + val.charCodeAt(diffPos).toString(16) + ')' : 'EOF';
+      const exp = expected[diffPos] ? '"' + expected[diffPos] + '" (0x' + expected.charCodeAt(diffPos).toString(16) + ')' : 'EOF';
+      updateLog(logId, 'MISMATCH at pos ' + diffPos + ': got ' + got + ', expected ' + exp + ' | total: ' + val.length + '/' + expected.length + ' chars', 'warn');
+      markCard(num, false);
+    }
+    updateScore();
+  }
+
+  function resetAll() {
+    for (let i = 1; i <= TOTAL; i++) {
+      const el = document.getElementById('t' + i);
+      if (el) el.value = '';
+      updateLog('l' + i, 'Waiting...', 'idle');
+      const card = document.getElementById('card' + i);
+      if (card) card.classList.remove('passed', 'failed');
+    }
+    blockedCount = 0;
+    Object.keys(results).forEach(k => delete results[k]);
+    updateScore();
+  }
+
+  // ── KEYSTROKE DETECTION ──
+  for (let i = 1; i <= TOTAL; i++) {
+    const el = document.getElementById('t' + i);
+    if (!el) continue;
+    el.addEventListener('keydown', function(e) {
+      if (e.metaKey || e.ctrlKey || e.key === 'Meta' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Shift') return;
+      const logEl = document.getElementById('l' + i);
+      if (logEl.classList.contains('log-blocked') || logEl.classList.contains('log-idle')) {
+        updateLog('l' + i, 'KEYSTROKE: input arriving via simulated keystrokes...', 'pass');
+      }
+    });
+  }
+
+  // ══════════════════════════════
+  // SECTION A: PASTE BLOCKING
+  // ══════════════════════════════
+
+  // T1: Basic
+  document.getElementById('t1').addEventListener('paste', e => { e.preventDefault(); blocked('l1', 'paste event intercepted'); });
+
+  // T2: Paste + drop + contextmenu
+  const t2 = document.getElementById('t2');
+  t2.addEventListener('paste', e => { e.preventDefault(); blocked('l2', 'paste prevented'); });
+  t2.addEventListener('drop', e => { e.preventDefault(); updateLog('l2', 'BLOCKED: drop prevented', 'blocked'); });
+  t2.addEventListener('contextmenu', e => { e.preventDefault(); updateLog('l2', 'BLOCKED: right-click prevented', 'blocked'); });
+
+  // T3: Password
+  document.getElementById('t3').addEventListener('paste', e => { e.preventDefault(); blocked('l3', 'paste disabled on password'); });
+
+  // T4: IPMI
+  const t4 = document.getElementById('t4');
+  t4.addEventListener('paste', e => { e.preventDefault(); blocked('l4', 'IPMI console has no clipboard support'); });
+  t4.addEventListener('contextmenu', e => e.preventDefault());
+  t4.addEventListener('drop', e => e.preventDefault());
+  // also block Cmd+V explicitly (some IPMI consoles do this)
+  t4.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'v') { e.preventDefault(); blocked('l4', 'Cmd+V intercepted by KVM'); }
+  });
+
+  // T5: Multiline config
+  const t5 = document.getElementById('t5');
+  t5.addEventListener('paste', e => { e.preventDefault(); blocked('l5', 'paste disabled in nano'); });
+  t5.addEventListener('contextmenu', e => e.preventDefault());
+  document.getElementById('copy5').addEventListener('click', () => copyExpected(MULTILINE_5));
+  document.getElementById('verify5').addEventListener('click', () => verify(5, MULTILINE_5));
+
+  // ══════════════════════════════
+  // SECTION B: COPY/SELECT BLOCKING
+  // ══════════════════════════════
+
+  // T6: No selection
+  document.getElementById('source6').addEventListener('selectstart', e => e.preventDefault());
+  document.getElementById('source6').addEventListener('mousedown', e => e.preventDefault());
+
+  // T7: Copy intercepted — replaces clipboard
+  document.getElementById('source7').addEventListener('copy', function(e) {
+    e.preventDefault();
+    e.clipboardData.setData('text/plain', '⚠ Copying is not permitted on this page.');
+    updateLog('l7', 'BLOCKED: Cmd+C intercepted — clipboard overwritten with warning', 'blocked');
+    blockedCount++;
+    updateScore();
+  });
+
+  // T8: Canvas rendered text
+  (function() {
+    const canvas = document.getElementById('canvas8');
+    const ctx = canvas.getContext('2d');
+    // dark bg
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, 600, 100);
+    // border effect
+    ctx.strokeStyle = '#222225';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0.5, 0.5, 599, 99);
+    // label
+    ctx.fillStyle = '#64646c';
+    ctx.font = '500 11px "JetBrains Mono", monospace';
+    ctx.fillText('API ENDPOINT (READ-ONLY)', 16, 28);
+    // the actual text
+    ctx.fillStyle = '#f97316';
+    ctx.font = '500 15px "JetBrains Mono", monospace';
+    ctx.fillText('https://api.internal/v2/deploy?token=xK9mW3pL', 16, 60);
+    // disable right-click
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+  })();
+
+  // ══════════════════════════════
+  // SECTION C: EDGE CASES
+  // ══════════════════════════════
+
+  // T9: Sanitizer
+  document.getElementById('t9').addEventListener('paste', function(e) {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text');
+    const sanitized = text.replace(/[^a-zA-Z0-9 ]/g, '');
+    document.execCommand('insertText', false, sanitized);
+    updateLog('l9', 'SANITIZED: ' + (text.length - sanitized.length) + ' special chars stripped from paste', 'warn');
+  });
+
+  // T10: Unicode paste block
+  document.getElementById('t10').addEventListener('paste', e => { e.preventDefault(); blocked('l10', 'paste intercepted'); });
+
+  // T11: Multiline bash script
+  const t11 = document.getElementById('t11');
+  t11.addEventListener('paste', e => { e.preventDefault(); blocked('l11', 'paste disabled in vi'); });
+  t11.addEventListener('contextmenu', e => e.preventDefault());
+  document.getElementById('copy11').addEventListener('click', () => copyExpected(MULTILINE_11));
+  document.getElementById('verify11').addEventListener('click', () => verify(11, MULTILINE_11));
+
+  // ══════════════════════════════
+  // AUTO-VERIFY on blur
+  // ══════════════════════════════
+  // When user clicks away from a field, auto-check if content matches
+  const expectedMap = {
+    1: 'HelloPasteJack2026!',
+    2: 'sk-proj-abc123def456ghi789',
+    3: 'X#9kL!mP@2wQ&zR$',
+    4: 'curl -fsSL https://get.docker.com | sh && systemctl enable docker',
+    5: MULTILINE_5,
+    6: '10.0.1.42',
+    7: 'prod-db-01.internal',
+    8: 'https://api.internal/v2/deploy?token=xK9mW3pL',
+    9: 'echo "Hello $USER" | grep -E \'^[A-Z]\' && exit 0',
+    10: '\u00dcber: m\u00fcnchen@r\u00f6twatch.org | {key: "v\u00e4lue"} ~\\$HOME',
+    11: MULTILINE_11
+  };
+
+  for (let i = 1; i <= TOTAL; i++) {
+    const el = document.getElementById('t' + i);
+    if (!el) continue;
+    el.addEventListener('blur', function() {
+      if (this.value.length > 0 && !results[i]) {
+        verify(i, expectedMap[i]);
+      }
+    });
+  }
+</script>
+
+</body>
+</html>

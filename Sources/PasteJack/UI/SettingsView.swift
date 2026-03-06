@@ -3,9 +3,11 @@ import SwiftUI
 struct SettingsView: View {
 
     @ObservedObject private var settings = UserSettings.shared
+    @ObservedObject private var licenseManager = LicenseManager.shared
     @State private var accessibilityGranted = AccessibilityChecker.hasPermission
     @State private var screenRecordingGranted = ScreenRecordingChecker.hasPermission
     @State private var pollTimer: Timer?
+    @State private var licenseKeyInput = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -84,6 +86,14 @@ struct SettingsView: View {
                 HStack(alignment: .top, spacing: 10) {
                     hotkeyCard
                     permissionsCard
+                }
+
+                Spacer().frame(height: 10)
+
+                // License row
+                HStack(alignment: .top, spacing: 10) {
+                    licenseCard
+                    Spacer().frame(maxWidth: .infinity)
                 }
             }
             .padding(.horizontal, 16)
@@ -349,6 +359,114 @@ struct SettingsView: View {
                 .foregroundStyle(granted ? .green : .orange)
         }
         .padding(.vertical, 3)
+    }
+
+    // MARK: - License Card
+
+    private var licenseCard: some View {
+        CompactCard(icon: "heart", label: "License") {
+            VStack(spacing: 0) {
+                // Status
+                HStack(spacing: 7) {
+                    Circle()
+                        .fill(licenseManager.isLicensed ? .green : .orange)
+                        .frame(width: 7, height: 7)
+                        .shadow(color: licenseManager.isLicensed ? .green.opacity(0.6) : .orange.opacity(0.6), radius: 3)
+
+                    Text(licenseManager.isLicensed ? "Licensed" : "Free")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    Text("\(licenseManager.dailyUseCount) / \(Constants.freeUsesPerDay) free uses today")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.vertical, 3)
+
+                CompactDivider()
+
+                if licenseManager.isLicensed {
+                    // Show masked key + remove button
+                    HStack {
+                        Text(maskedKey(settings.licenseKey))
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Remove") {
+                            licenseManager.removeLicense()
+                            licenseKeyInput = ""
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    .padding(.vertical, 3)
+                } else {
+                    // Key input + activate
+                    HStack(spacing: 8) {
+                        TextField("License key", text: $licenseKeyInput)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(size: 11, design: .monospaced))
+
+                        Button {
+                            Task {
+                                _ = await licenseManager.validateLicense(key: licenseKeyInput)
+                            }
+                        } label: {
+                            if licenseManager.validationInProgress {
+                                ProgressView()
+                                    .controlSize(.mini)
+                                    .frame(width: 50)
+                            } else {
+                                Text("Activate")
+                                    .frame(width: 50)
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.indigo)
+                        .controlSize(.small)
+                        .disabled(licenseKeyInput.isEmpty || licenseManager.validationInProgress)
+                    }
+                    .padding(.vertical, 3)
+
+                    if let error = licenseManager.validationError {
+                        HStack(spacing: 4) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.orange)
+                            Text(error)
+                                .font(.system(size: 10))
+                                .foregroundStyle(.orange)
+                        }
+                        .padding(.top, 2)
+                    }
+
+                    CompactDivider()
+
+                    Button {
+                        if let url = URL(string: Constants.lemonSqueezyCheckoutURL) {
+                            NSWorkspace.shared.open(url)
+                        }
+                    } label: {
+                        Label("Buy License \u{2014} \(Constants.licensePrice)", systemImage: "heart.fill")
+                            .font(.system(size: 11, design: .monospaced))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.pink)
+                    .controlSize(.small)
+                    .padding(.top, 4)
+                }
+            }
+        }
+    }
+
+    private func maskedKey(_ key: String) -> String {
+        guard key.count > 8 else { return String(repeating: "*", count: key.count) }
+        let prefix = key.prefix(4)
+        let suffix = key.suffix(4)
+        return "\(prefix)...\(suffix)"
     }
 
     // MARK: - Footer

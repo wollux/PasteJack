@@ -45,4 +45,10 @@ enum Constants {
     static let defaultLineDelayMs: Double = 0
     static let maxLineDelayMs: Double = 2000
     static let lineDelayStepMs: Double = 50
+
+    // Freemium
+    static let freeUsesPerDay: Int = 5
+    static let licensePrice: String = "$9"
+    static let lemonSqueezyCheckoutURL = "https://YOURSTORE.lemonsqueezy.com/checkout/buy/PRODUCT_ID"
+    static let lemonSqueezyValidateURL = "https://api.lemonsqueezy.com/v1/licenses/validate"
 }

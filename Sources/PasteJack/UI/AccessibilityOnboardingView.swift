@@ -143,7 +143,7 @@ struct AccessibilityOnboardingView: View {
 
             HStack(spacing: 7) {
                 PrivacyPill(text: "No keylogging")
-                PrivacyPill(text: "No network calls")
+                PrivacyPill(text: "No tracking")
                 PrivacyPill(text: "No background activity")
             }
         }
