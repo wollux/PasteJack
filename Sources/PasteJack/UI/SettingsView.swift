@@ -17,7 +17,7 @@ struct SettingsView: View {
             footer
         }
         .ignoresSafeArea()
-        .frame(width: 560, height: 720)
+        .frame(width: 560, height: 640)
         .background(Color(.windowBackgroundColor))
         .onAppear { startPolling() }
         .onDisappear { stopPolling() }
@@ -82,18 +82,13 @@ struct SettingsView: View {
 
                 Spacer().frame(height: 10)
 
-                // Bottom row: Hotkeys + Permissions
+                // Bottom row: Hotkeys + Permissions & License
                 HStack(alignment: .top, spacing: 10) {
                     hotkeyCard
-                    permissionsCard
-                }
-
-                Spacer().frame(height: 10)
-
-                // License row
-                HStack(alignment: .top, spacing: 10) {
-                    licenseCard
-                    Spacer().frame(maxWidth: .infinity)
+                    VStack(spacing: 10) {
+                        permissionsCard
+                        licenseCard
+                    }
                 }
             }
             .padding(.horizontal, 16)
