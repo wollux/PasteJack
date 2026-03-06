@@ -17,7 +17,7 @@ struct SettingsView: View {
             footer
         }
         .ignoresSafeArea()
-        .frame(width: 560, height: 580)
+        .frame(width: 560, height: 720)
         .background(Color(.windowBackgroundColor))
         .onAppear { startPolling() }
         .onDisappear { stopPolling() }
