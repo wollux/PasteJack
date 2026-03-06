@@ -13,7 +13,6 @@ echo "==> Creating DMG..."
 rm -rf "${DMG_DIR}"
 mkdir -p "${DMG_DIR}"
 cp -R "${APP_BUNDLE}" "${DMG_DIR}/"
-ln -s /Applications "${DMG_DIR}/Applications"
 
 create-dmg \
     --volname "${APP_NAME}" \
