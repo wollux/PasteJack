@@ -736,7 +736,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Position bottom-center above Dock
         if let screen = NSScreen.main {
-            let overlayWidth: CGFloat = 300
+            let overlayWidth: CGFloat = 340
             let overlayHeight: CGFloat = 100
             let x = screen.frame.midX - overlayWidth / 2
             let y = screen.frame.origin.y + 80
