@@ -58,6 +58,13 @@ enum DevBundleHelper {
             <string>APPL</string>
             <key>LSUIElement</key>
             <true/>
+            <key>CFBundleURLTypes</key>
+            <array><dict>
+                <key>CFBundleURLSchemes</key>
+                <array><string>pastejack</string></array>
+                <key>CFBundleURLName</key>
+                <string>\(Constants.bundleIdentifier)</string>
+            </dict></array>
         </dict>
         </plist>
         """

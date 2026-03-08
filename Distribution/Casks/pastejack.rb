@@ -2,14 +2,14 @@ cask "pastejack" do
   version "0.9.10"
   sha256 "7bdf135bae2273053975cf7c00e402cbc6dafc68ad9b3d2484b5ed3e5ec11332"
 
-  url "https://github.com/wollux/PasteJack/releases/download/v#{version}/PasteJack-#{version}.dmg"
+  url "https://pastejack.app/downloads/PasteJack-#{version}.dmg"
   name "PasteJack"
   desc "Paste clipboard contents as simulated keystrokes — bypass paste-blocking"
-  homepage "https://github.com/wollux/PasteJack"
+  homepage "https://pastejack.app"
 
   livecheck do
-    url :url
-    strategy :github_latest
+    url "https://pastejack.app/appcast.xml"
+    strategy :sparkle
   end
 
   depends_on macos: ">= :sonoma"

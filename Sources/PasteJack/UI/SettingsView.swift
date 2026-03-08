@@ -191,6 +191,31 @@ struct SettingsView: View {
                         .font(.system(size: 12, design: .monospaced))
                         .foregroundStyle(.primary.opacity(0.8))
                 }
+
+                CompactDivider()
+
+                CompactRowWithInfo("After typing", info: "Send key after typing completes. Useful for auto-tabbing to the next field.") {
+                    Picker("", selection: $settings.postTypingAction) {
+                        Text("Nothing").tag("none")
+                        Text("Tab \u{21E5}").tag("tab")
+                        Text("Enter \u{21A9}").tag("enter")
+                        Text("Tab + Enter").tag("tabEnter")
+                    }
+                    .frame(width: 120)
+                }
+
+                CompactDivider()
+
+                CompactRowWithInfo("Target layout", info: "For IPMI/iDRAC/RDP targets that ignore Unicode. Match the target's keyboard layout.") {
+                    Picker("", selection: $settings.targetLayout) {
+                        Text("Auto (Unicode)").tag("auto")
+                        Text("US").tag("us")
+                        Text("DE").tag("de")
+                        Text("UK").tag("uk")
+                        Text("FR").tag("fr")
+                    }
+                    .frame(width: 120)
+                }
             }
         }
     }
@@ -213,6 +238,8 @@ struct SettingsView: View {
                 CompactToggleRowWithInfo("Sensitive warn", isOn: $settings.sensitiveDetection, info: "Warn before typing if clipboard contains API keys, passwords, or tokens.")
                 CompactDivider()
                 CompactToggleRowWithInfo("Typing preview", isOn: $settings.showPreview, info: "Show a preview window with text stats before typing starts.")
+                CompactDivider()
+                CompactToggleRowWithInfo("iCloud Sync", isOn: $settings.iCloudSyncEnabled, info: "Sync snippets across your Macs via iCloud.")
 
                 CompactDivider()
 
@@ -550,27 +577,6 @@ private struct CompactCard<Content: View>: View {
             RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(.quaternary, lineWidth: 0.5)
         )
-    }
-}
-
-private struct CompactRow<Content: View>: View {
-    let label: String
-    @ViewBuilder let trailing: Content
-
-    init(_ label: String, @ViewBuilder trailing: () -> Content) {
-        self.label = label
-        self.trailing = trailing()
-    }
-
-    var body: some View {
-        HStack {
-            Text(label)
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-            Spacer()
-            trailing
-        }
-        .padding(.vertical, 5)
     }
 }
 

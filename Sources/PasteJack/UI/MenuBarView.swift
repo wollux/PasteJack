@@ -15,8 +15,12 @@ struct MenuBarView: View {
     let dismissPopover: () -> Void
     let onTypingHistory: () -> Void
     let onOCRHistory: () -> Void
+    let onQueue: () -> Void
+    let onTypeText: ((String) -> Void)?
+    let onCheckForUpdates: () -> Void
 
     @ObservedObject private var settings = UserSettings.shared
+    @ObservedObject private var clipboardHistory = ClipboardHistory.shared
     @State private var hoveredItem: String?
 
     var body: some View {
@@ -24,6 +28,10 @@ struct MenuBarView: View {
             statusSection
             menuDivider
             actionItems
+            if !clipboardHistory.entries.isEmpty {
+                menuDivider
+                recentClipboardSection
+            }
             menuDivider
             historyAndSnippetItems
             menuDivider
@@ -185,10 +193,48 @@ struct MenuBarView: View {
         }
     }
 
+    // MARK: - Recent Clipboard
+
+    private var recentClipboardSection: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("RECENT CLIPBOARD")
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+                    .tracking(1.0)
+                Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 4)
+
+            ForEach(Array(clipboardHistory.entries.prefix(3).enumerated()), id: \.element.id) { index, entry in
+                menuItem(
+                    id: "clipboard-\(index)",
+                    icon: "doc.on.clipboard",
+                    label: entry.preview,
+                    shortcut: nil
+                ) {
+                    dismissPopover()
+                    onTypeText?(entry.text)
+                }
+            }
+        }
+    }
+
     // MARK: - History, Snippets & Settings
 
     private var historyAndSnippetItems: some View {
         VStack(spacing: 0) {
+            menuItem(
+                id: "queue",
+                icon: "list.bullet.rectangle",
+                label: "Typing Queue\u{2026}",
+                shortcut: nil
+            ) {
+                dismissPopover()
+                onQueue()
+            }
+
             menuItem(
                 id: "typing-history",
                 icon: "clock.arrow.circlepath",
@@ -227,6 +273,16 @@ struct MenuBarView: View {
             ) {
                 dismissPopover()
                 onSettings()
+            }
+
+            menuItem(
+                id: "updates",
+                icon: "arrow.triangle.2.circlepath",
+                label: "Check for Updates\u{2026}",
+                shortcut: nil
+            ) {
+                dismissPopover()
+                onCheckForUpdates()
             }
         }
     }

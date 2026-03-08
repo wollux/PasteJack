@@ -26,6 +26,26 @@ final class UserSettings: ObservableObject {
     /// Maximum characters to type (safety limit)
     @AppStorage("maxCharacters") var maxCharacters: Int = Constants.defaultMaxCharacters
 
+    // MARK: - Post-Typing Action
+
+    /// Action to perform after typing completes: "none", "tab", "enter", "tabEnter"
+    @AppStorage("postTypingAction") var postTypingAction: String = "none"
+
+    // MARK: - Target Keyboard Layout
+
+    /// Target keyboard layout for remote consoles: "auto", "us", "de", "uk", "fr"
+    @AppStorage("targetLayout") var targetLayout: String = "auto"
+
+    // MARK: - iCloud Sync
+
+    /// Whether to sync snippets via iCloud
+    @AppStorage("iCloudSyncEnabled") var iCloudSyncEnabled: Bool = false
+
+    // MARK: - What's New
+
+    /// Last version the user has seen the What's New sheet for
+    @AppStorage("lastSeenVersion") var lastSeenVersion: String = ""
+
     // MARK: - Onboarding
 
     /// Whether the user has completed the initial onboarding

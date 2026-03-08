@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>PasteJack</title>
+    <link>https://pastejack.app/appcast.xml</link>
+    <description>PasteJack Updates</description>
+    <language>en</language>
+    <item>
+      <title>Version 1.0.0</title>
+      <sparkle:version>1.0.0</sparkle:version>
+      <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://pastejack.app/downloads/PasteJack-1.0.0.dmg"
+        sparkle:edSignature=""
+        length="0"
+        type="application/octet-stream"/>
+    </item>
+  </channel>
+</rss>

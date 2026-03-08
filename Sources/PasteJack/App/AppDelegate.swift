@@ -21,6 +21,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var popover: NSPopover?
     private var eventMonitor: Any?
     private var escapeMonitor: Any?
+    private var queueWindow: NSWindow?
+    private let typingQueue = TypingQueue()
+    private let clipboardHistory = ClipboardHistory.shared
+    private var whatsNewWindow: NSWindow?
+    private let updateManager = UpdateManager()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Wrap bare executable in .app bundle for stable TCC permissions.
@@ -104,6 +109,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.updateStatusIcon(for: state)
             }
         }
+
+        // Start clipboard history monitoring
+        clipboardHistory.startMonitoring()
+
+        // Show What's New after update (but not on first launch)
+        let settings = UserSettings.shared
+        if settings.hasSeenOnboarding && settings.lastSeenVersion != Constants.appVersion {
+            showWhatsNew()
+        }
     }
 
     private func setupStatusItem() {
@@ -117,6 +131,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.action = #selector(togglePopover)
             button.target = self
         }
+    }
+
+    // MARK: - Window Helper
+
+    /// Creates a standard PasteJack window with transparent titlebar.
+    private func makeWindow<Content: SwiftUI.View>(
+        title: String,
+        resizable: Bool = false,
+        content: Content
+    ) -> NSWindow {
+        var styleMask: NSWindow.StyleMask = [.titled, .closable, .fullSizeContentView]
+        if resizable { styleMask.insert(.resizable) }
+
+        let window = NSWindow(
+            contentRect: .zero,
+            styleMask: styleMask,
+            backing: .buffered,
+            defer: false
+        )
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.title = title
+        window.contentView = NSHostingView(rootView: content)
+        window.center()
+        window.isReleasedWhenClosed = false
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        return window
     }
 
     // MARK: - Popover Menu
@@ -142,7 +184,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onQuit: { NSApp.terminate(nil) },
             dismissPopover: { [weak self] in self?.closePopover() },
             onTypingHistory: { [weak self] in self?.openTypingHistory() },
-            onOCRHistory: { [weak self] in self?.openOCRHistory() }
+            onOCRHistory: { [weak self] in self?.openOCRHistory() },
+            onQueue: { [weak self] in self?.openQueue() },
+            onTypeText: { [weak self] text in self?.startTypingSession(text: text) },
+            onCheckForUpdates: { [weak self] in self?.updateManager.checkForUpdates() }
         )
 
         let pop = NSPopover()
@@ -218,31 +263,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         startTypingSession(text: text)
     }
 
-    private func startTypingSession(text: String) {
+    private func startTypingSession(text: String, postTypingAction: String? = nil) {
         let settings = UserSettings.shared
         session.start(
             text: text,
             delayMicroseconds: settings.delayMicroseconds,
             countdownSeconds: settings.countdownSeconds,
             adaptiveSpeed: settings.adaptiveSpeed,
-            lineDelayMicroseconds: settings.lineDelayMicroseconds
+            lineDelayMicroseconds: settings.lineDelayMicroseconds,
+            postTypingAction: postTypingAction ?? settings.postTypingAction,
+            targetLayout: TargetLayout(rawValue: settings.targetLayout) ?? .auto
         )
     }
 
     private func showTypingPreview(text: String) {
         previewWindow?.close()
-
-        let window = NSWindow(
-            contentRect: .zero,
-            styleMask: [.titled, .closable, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
-        )
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
-        window.title = "PasteJack — Preview"
-        window.contentView = NSHostingView(
-            rootView: TypingPreviewView(
+        previewWindow = makeWindow(
+            title: "PasteJack \u{2014} Preview",
+            content: TypingPreviewView(
                 text: text,
                 delayMs: UserSettings.shared.keystrokeDelayMs,
                 onStart: { [weak self] in
@@ -254,11 +292,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             )
         )
-        window.center()
-        window.isReleasedWhenClosed = false
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        self.previewWindow = window
     }
 
     @objc private func cancelTyping() {
@@ -319,7 +352,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 delayMicroseconds: settings.delayMicroseconds,
                 countdownSeconds: 0, // No countdown for selected text
                 adaptiveSpeed: settings.adaptiveSpeed,
-                lineDelayMicroseconds: settings.lineDelayMicroseconds
+                lineDelayMicroseconds: settings.lineDelayMicroseconds,
+                postTypingAction: settings.postTypingAction,
+                targetLayout: TargetLayout(rawValue: settings.targetLayout) ?? .auto
             )
         }
     }
@@ -405,17 +440,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        let window = NSWindow(
-            contentRect: .zero,
-            styleMask: [.titled, .closable, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
-        )
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
-        window.title = "PasteJack — OCR Result"
-        window.contentView = NSHostingView(
-            rootView: OCRResultView(
+        self.ocrResultWindow = makeWindow(
+            title: "PasteJack \u{2014} OCR Result",
+            content: OCRResultView(
                 text: text,
                 detectedLanguages: detectedLanguages,
                 onTypeIt: { [weak self] editedText in
@@ -424,12 +451,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         self?.showOnboarding()
                         return
                     }
-                    let settings = UserSettings.shared
-                    self?.session.start(
-                        text: editedText,
-                        delayMicroseconds: settings.delayMicroseconds,
-                        countdownSeconds: 0
-                    )
+                    self?.startTypingSession(text: editedText)
                 },
                 onTryAgain: { [weak self] in
                     self?.ocrResultWindow?.close()
@@ -440,11 +462,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             )
         )
-        window.center()
-        window.isReleasedWhenClosed = false
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        self.ocrResultWindow = window
     }
 
     // MARK: - Snippet Library
@@ -458,39 +475,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let window = NSWindow(
-            contentRect: .zero,
-            styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
-        )
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
-        window.title = "PasteJack — Snippets"
-        window.contentView = NSHostingView(
-            rootView: SnippetLibraryView(
+        self.snippetWindow = makeWindow(
+            title: "PasteJack \u{2014} Snippets",
+            resizable: true,
+            content: SnippetLibraryView(
                 onTypeSnippet: { [weak self] text in
                     self?.snippetWindow?.close()
                     guard AccessibilityChecker.hasPermission else {
                         self?.showOnboarding()
                         return
                     }
-                    let settings = UserSettings.shared
-                    self?.session.start(
-                        text: text,
-                        delayMicroseconds: settings.delayMicroseconds,
-                        countdownSeconds: settings.countdownSeconds,
-                        adaptiveSpeed: settings.adaptiveSpeed,
-                        lineDelayMicroseconds: settings.lineDelayMicroseconds
-                    )
+                    let resolved = SnippetVariableResolver.resolve(text)
+                    self?.startTypingSession(text: resolved)
                 }
             )
         )
-        window.center()
-        window.isReleasedWhenClosed = false
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        self.snippetWindow = window
     }
 
     // MARK: - History Windows
@@ -505,28 +504,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let window = NSWindow(
-            contentRect: .zero,
-            styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
-        )
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
-        window.title = "PasteJack — Typing History"
-        window.contentView = NSHostingView(
-            rootView: TypingHistoryView(
+        self.typingHistoryWindow = makeWindow(
+            title: "PasteJack \u{2014} Typing History",
+            resizable: true,
+            content: TypingHistoryView(
                 onTypeEntry: { [weak self] text in
                     self?.typingHistoryWindow?.close()
                     self?.startTypingSession(text: text)
                 }
             )
         )
-        window.center()
-        window.isReleasedWhenClosed = false
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        self.typingHistoryWindow = window
     }
 
     @objc private func openOCRHistory() {
@@ -536,28 +523,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let window = NSWindow(
-            contentRect: .zero,
-            styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
-        )
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
-        window.title = "PasteJack — OCR History"
-        window.contentView = NSHostingView(
-            rootView: OCRHistoryView(
+        self.ocrHistoryWindow = makeWindow(
+            title: "PasteJack \u{2014} OCR History",
+            resizable: true,
+            content: OCRHistoryView(
                 onTypeEntry: { [weak self] text in
                     self?.ocrHistoryWindow?.close()
                     self?.startTypingSession(text: text)
                 }
             )
         )
-        window.center()
-        window.isReleasedWhenClosed = false
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        self.ocrHistoryWindow = window
     }
 
     // MARK: - Support Nag
@@ -565,25 +540,83 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func showSupportNag() {
         guard nagWindow?.isVisible != true else { return }
 
-        let window = NSWindow(
-            contentRect: .zero,
-            styleMask: [.titled, .closable, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
-        )
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
-        window.title = "PasteJack"
-        window.contentView = NSHostingView(
-            rootView: SupportNagView(onDismiss: { [weak self] in
+        self.nagWindow = makeWindow(
+            title: "PasteJack",
+            content: SupportNagView(onDismiss: { [weak self] in
                 self?.nagWindow?.close()
             })
         )
-        window.center()
-        window.isReleasedWhenClosed = false
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        self.nagWindow = window
+    }
+
+    // MARK: - URL Scheme Handler
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls { handleURL(url) }
+    }
+
+    private func handleURL(_ url: URL) {
+        guard url.scheme == "pastejack",
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
+
+        switch url.host {
+        case "type":
+            if let text = components.queryItems?.first(where: { $0.name == "text" })?.value {
+                startTypingSession(text: text)
+            } else if let name = components.queryItems?.first(where: { $0.name == "snippet" })?.value,
+                      let snippet = SnippetStore.shared.snippets.first(where: { $0.name == name }) {
+                let resolved = SnippetVariableResolver.resolve(snippet.text)
+                startTypingSession(text: resolved)
+            }
+        case "ocr":
+            handleOCRHotkey()
+        default:
+            break
+        }
+    }
+
+    // MARK: - Typing Queue
+
+    @objc private func openQueue() {
+        if let queueWindow, queueWindow.isVisible {
+            queueWindow.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        self.queueWindow = makeWindow(
+            title: "PasteJack \u{2014} Typing Queue",
+            resizable: true,
+            content: TypingQueueView(
+                queue: typingQueue,
+                session: session,
+                onExecute: { [weak self] in
+                    guard let self else { return }
+                    Task { @MainActor in
+                        await self.typingQueue.execute(
+                            session: self.session,
+                            settings: UserSettings.shared
+                        )
+                    }
+                },
+                onCancel: { [weak self] in
+                    self?.session.cancel()
+                    self?.typingQueue.stop()
+                }
+            )
+        )
+    }
+
+    // MARK: - What's New
+
+    private func showWhatsNew() {
+        guard whatsNewWindow?.isVisible != true else { return }
+
+        self.whatsNewWindow = makeWindow(
+            title: "PasteJack \u{2014} What's New",
+            content: WhatsNewView(onDismiss: { [weak self] in
+                self?.whatsNewWindow?.close()
+            })
+        )
     }
 
     // MARK: - Settings & Onboarding Windows
@@ -595,21 +628,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let window = NSWindow(
-            contentRect: .zero,
-            styleMask: [.titled, .closable, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
+        self.settingsWindow = makeWindow(
+            title: "PasteJack Settings",
+            content: SettingsView()
         )
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
-        window.title = "PasteJack Settings"
-        window.contentView = NSHostingView(rootView: SettingsView())
-        window.center()
-        window.isReleasedWhenClosed = false
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        self.settingsWindow = window
     }
 
     @objc private func showOnboardingFromNotification() {
@@ -623,25 +645,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let window = NSWindow(
-            contentRect: .zero,
-            styleMask: [.titled, .closable, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
-        )
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
-        window.title = "PasteJack"
-        window.contentView = NSHostingView(
-            rootView: AccessibilityOnboardingView(onDismiss: { [weak self] in
+        self.onboardingWindow = makeWindow(
+            title: "PasteJack",
+            content: AccessibilityOnboardingView(onDismiss: { [weak self] in
                 self?.onboardingWindow?.close()
             })
         )
-        window.center()
-        window.isReleasedWhenClosed = false
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        self.onboardingWindow = window
     }
 
     // MARK: - Status Icon

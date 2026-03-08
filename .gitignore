@@ -4,3 +4,7 @@
 xcuserdata/
 DerivedData/
 .DS_Store
+pastejack-*.jsx
+docs/test-*.html
+*.log
+claude.md

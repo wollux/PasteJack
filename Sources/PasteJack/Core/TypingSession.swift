@@ -1,3 +1,4 @@
+import Carbon.HIToolbox
 import Combine
 import CoreGraphics
 
@@ -28,7 +29,9 @@ final class TypingSession: ObservableObject {
         delayMicroseconds: UInt32,
         countdownSeconds: Int,
         adaptiveSpeed: Bool = false,
-        lineDelayMicroseconds: UInt32 = 0
+        lineDelayMicroseconds: UInt32 = 0,
+        postTypingAction: String = "none",
+        targetLayout: TargetLayout = .auto
     ) {
         cancel()
 
@@ -93,7 +96,24 @@ final class TypingSession: ObservableObject {
                         } else if ControlCharMapping.isControlCharacter(char) {
                             continue
                         } else {
-                            if adaptiveSpeed {
+                            // Target layout mode: use real keycodes for remote consoles
+                            if targetLayout != .auto,
+                               let mapping = LayoutKeycodeMap.keycode(for: char, layout: targetLayout) {
+                                if adaptiveSpeed {
+                                    currentDelay = engine.typeControlCharacterAdaptive(
+                                        mapping.keyCode,
+                                        modifiers: mapping.modifiers,
+                                        baseDelay: delayMicroseconds,
+                                        currentDelay: currentDelay
+                                    )
+                                } else {
+                                    engine.typeControlCharacter(
+                                        mapping.keyCode,
+                                        modifiers: mapping.modifiers,
+                                        delay: delayMicroseconds
+                                    )
+                                }
+                            } else if adaptiveSpeed {
                                 currentDelay = engine.typeCharacterAdaptive(
                                     char,
                                     baseDelay: delayMicroseconds,
@@ -103,6 +123,14 @@ final class TypingSession: ObservableObject {
                                 engine.typeCharacter(char, delay: delayMicroseconds)
                             }
                         }
+                    }
+
+                    // Post-typing action: send Tab/Enter after typing completes
+                    if postTypingAction == "tab" || postTypingAction == "tabEnter" {
+                        engine.typeControlCharacter(CGKeyCode(kVK_Tab), delay: delayMicroseconds)
+                    }
+                    if postTypingAction == "enter" || postTypingAction == "tabEnter" {
+                        engine.typeControlCharacter(CGKeyCode(kVK_Return), delay: delayMicroseconds)
                     }
 
                     continuation.resume()

@@ -7,6 +7,9 @@ struct AccessibilityOnboardingView: View {
     @State private var pollTimer: Timer?
     @State private var pulseAnimation = false
     @State private var floatAnimation = false
+    @State private var currentStep: Int = 1
+    @State private var testText = ""
+    @State private var testCompleted = false
     var onDismiss: (() -> Void)?
 
     private var allGranted: Bool {
@@ -20,7 +23,8 @@ struct AccessibilityOnboardingView: View {
     var body: some View {
         VStack(spacing: 0) {
             compactHeader
-            bodyContent
+            progressDots
+            stepContent
             Spacer(minLength: 8)
             footerSection
         }
@@ -96,34 +100,127 @@ struct AccessibilityOnboardingView: View {
         .frame(height: 60)
     }
 
-    // MARK: - Body
+    // MARK: - Progress Dots
 
-    private var bodyContent: some View {
-        VStack(spacing: 8) {
-            // Permission cards side by side
-            HStack(alignment: .top, spacing: 8) {
-                PermissionCard(
-                    icon: "keyboard",
-                    title: "Accessibility",
-                    description: "Simulates keystrokes via CGEvent to bypass paste-blocking.",
-                    granted: accessibilityGranted,
-                    onGrant: { AccessibilityChecker.requestPermission() }
-                )
-
-                PermissionCard(
-                    icon: "rectangle.dashed.badge.record",
-                    title: "Screen Recording",
-                    description: "Captures screen regions for on-device OCR recognition.",
-                    granted: screenRecordingGranted,
-                    onGrant: { ScreenRecordingChecker.requestPermission() }
-                )
+    private var progressDots: some View {
+        HStack(spacing: 8) {
+            ForEach(1...3, id: \.self) { step in
+                Circle()
+                    .fill(step <= currentStep ? Color.indigo : Color.secondary.opacity(0.2))
+                    .frame(width: 8, height: 8)
+                    .animation(.easeInOut(duration: 0.3), value: currentStep)
             }
+        }
+        .padding(.top, 14)
+        .padding(.bottom, 6)
+    }
 
-            // Privacy pills
+    // MARK: - Step Content
+
+    @ViewBuilder
+    private var stepContent: some View {
+        switch currentStep {
+        case 1:
+            stepOneAccessibility
+        case 2:
+            stepTwoScreenRecording
+        case 3:
+            stepThreeTest
+        default:
+            EmptyView()
+        }
+    }
+
+    private var stepOneAccessibility: some View {
+        VStack(spacing: 8) {
+            PermissionCard(
+                icon: "keyboard",
+                title: "Accessibility",
+                description: "Simulates keystrokes via CGEvent to bypass paste-blocking. This is the core permission PasteJack needs.",
+                granted: accessibilityGranted,
+                onGrant: { AccessibilityChecker.requestPermission() }
+            )
+            .padding(.horizontal, 14)
+
             privacyPills
         }
+        .padding(.top, 8)
+    }
+
+    private var stepTwoScreenRecording: some View {
+        VStack(spacing: 8) {
+            PermissionCard(
+                icon: "rectangle.dashed.badge.record",
+                title: "Screen Recording",
+                description: "Captures screen regions for on-device OCR recognition. Optional but needed for the Copy from Screen feature.",
+                granted: screenRecordingGranted,
+                onGrant: { ScreenRecordingChecker.requestPermission() }
+            )
+            .padding(.horizontal, 14)
+
+            privacyPills
+        }
+        .padding(.top, 8)
+    }
+
+    private var stepThreeTest: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 8) {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.system(size: 36))
+                    .foregroundStyle(.green)
+
+                Text("All set! Let's test it.")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+
+                Text("Click the button below to type a test message into the text field.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            TextField("Test output will appear here...", text: $testText)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 13, design: .monospaced))
+                .padding(.horizontal, 30)
+
+            Button {
+                testText = ""
+                let engine = KeystrokeEngine()
+                let testString = "Hello from PasteJack!"
+                Task {
+                    // Small delay to let focus settle
+                    try? await Task.sleep(for: .milliseconds(200))
+                    await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                        DispatchQueue.global(qos: .userInitiated).async {
+                            for char in testString {
+                                engine.typeCharacter(char, delay: 30_000)
+                            }
+                            continuation.resume()
+                        }
+                    }
+                    testCompleted = true
+                }
+            } label: {
+                Label("Test it now", systemImage: "play.fill")
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.indigo)
+            .controlSize(.regular)
+            .disabled(!accessibilityGranted)
+
+            if testCompleted {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("It works!")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.green)
+                }
+            }
+        }
         .padding(.horizontal, 14)
-        .padding(.top, 12)
+        .padding(.top, 8)
     }
 
     // MARK: - Privacy Pills
@@ -155,48 +252,78 @@ struct AccessibilityOnboardingView: View {
             RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(.quaternary, lineWidth: 0.5)
         )
+        .padding(.horizontal, 14)
     }
 
     // MARK: - Footer
 
     private func dismiss() {
         UserSettings.shared.hasSeenOnboarding = true
+        UserSettings.shared.lastSeenVersion = Constants.appVersion
         onDismiss?()
     }
 
     private var footerSection: some View {
         VStack(spacing: 8) {
-            if allGranted {
-                Button {
-                    dismiss()
-                } label: {
-                    Label("Get Started", systemImage: "checkmark.circle.fill")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
-                .controlSize(.large)
-            } else {
-                Button {
-                    if !accessibilityGranted {
-                        AccessibilityChecker.requestPermission()
+            HStack(spacing: 12) {
+                if currentStep > 1 {
+                    Button {
+                        withAnimation { currentStep -= 1 }
+                    } label: {
+                        Label("Back", systemImage: "chevron.left")
+                            .frame(maxWidth: .infinity)
                     }
-                    if !screenRecordingGranted {
-                        ScreenRecordingChecker.requestPermission()
-                    }
-                } label: {
-                    Label("Grant All Permissions", systemImage: "lock.open")
-                        .frame(maxWidth: .infinity)
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.indigo)
-                .controlSize(.large)
+
+                if currentStep < 3 {
+                    Button {
+                        withAnimation { currentStep += 1 }
+                    } label: {
+                        Label(nextButtonLabel, systemImage: "chevron.right")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(currentStepGranted ? .green : .indigo)
+                    .controlSize(.large)
+                } else {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Label("Get Started", systemImage: "checkmark.circle.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.green)
+                    .controlSize(.large)
+                }
             }
 
             statusPill
         }
         .padding(.horizontal, 14)
         .padding(.bottom, 13)
+    }
+
+    private var nextButtonLabel: String {
+        switch currentStep {
+        case 1:
+            return accessibilityGranted ? "Next" : "Skip"
+        case 2:
+            return screenRecordingGranted ? "Next" : "Skip"
+        default:
+            return "Next"
+        }
+    }
+
+    private var currentStepGranted: Bool {
+        switch currentStep {
+        case 1: return accessibilityGranted
+        case 2: return screenRecordingGranted
+        case 3: return true
+        default: return false
+        }
     }
 
     private var statusPill: some View {
@@ -247,9 +374,13 @@ struct AccessibilityOnboardingView: View {
                         accessibilityGranted = accGranted
                         screenRecordingGranted = scrGranted
                     }
+                    // Auto-advance when step's permission is granted
+                    if currentStep == 1 && accGranted {
+                        withAnimation { currentStep = 2 }
+                    } else if currentStep == 2 && scrGranted {
+                        withAnimation { currentStep = 3 }
+                    }
                 }
-
-                // No auto-dismiss — user clicks "Get Started" manually
             }
         }
     }

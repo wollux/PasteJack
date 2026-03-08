@@ -49,6 +49,13 @@ cat > "${APP_BUNDLE}/Contents/Info.plist" << EOF
     <string>14.0</string>
     <key>LSUIElement</key>
     <true/>
+    <key>CFBundleURLTypes</key>
+    <array><dict>
+        <key>CFBundleURLSchemes</key>
+        <array><string>pastejack</string></array>
+        <key>CFBundleURLName</key>
+        <string>com.pastejack.app</string>
+    </dict></array>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2026 Wolfgang Vieregg. All rights reserved.</string>
 </dict>
